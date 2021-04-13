@@ -9,21 +9,23 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"rethinkgo-backups/database"
+	"unsafe"
 )
 
 type databaseImport struct {
-	name string
-	conn *database.Connection
+	name   string
+	conn   *database.Connection
 	tables []string
 	reader *bufio.Reader
 }
 
 func newDatabaseImport(name string, conn *database.Connection) *databaseImport {
-	return &databaseImport {
-		name: name,
-		conn: conn,
-		reader: bufio.NewReader(new(bytes.Buffer)),
+	return &databaseImport{
+		name:   name,
+		conn:   conn,
+		reader: bufio.NewReader(bytes.NewBuffer(nil)),
 	}
 }
 
@@ -69,7 +71,7 @@ func (i *databaseImport) importTable(name string) error {
 	parseFile(&tableInfo, infoFile)
 	if !i.tableExist(name) {
 		log.Printf("Creating table '%v' in '%v'...", name, i.name)
-		r.DB(i.name).TableCreate(name, r.TableCreateOpts {
+		r.DB(i.name).TableCreate(name, r.TableCreateOpts{
 			PrimaryKey: tableInfo.PrimaryKey,
 		}).Run(i.conn.DB)
 		r.DB(i.name).Table(name).Wait(r.WaitOpts{
@@ -78,8 +80,8 @@ func (i *databaseImport) importTable(name string) error {
 	}
 	log.Printf("Importing indexes...")
 	for _, index := range tableInfo.Indexes {
-		_, _ = r.DB(i.name).Table(name).IndexCreateFunc(index.Index, index.Function, r.IndexCreateOpts {
-			Geo: index.Geo,
+		_, _ = r.DB(i.name).Table(name).IndexCreateFunc(index.Index, index.Function, r.IndexCreateOpts{
+			Geo:   index.Geo,
 			Multi: index.Multi,
 		}).Run(i.conn.DB)
 	}
@@ -96,20 +98,23 @@ func (i *databaseImport) importTable(name string) error {
 		}
 		i.reader.Reset(chunkFile)
 		var toInsert []interface{}
+		var data []byte
 		for {
-			data, err := i.reader.ReadBytes(0xa)
+			data, err = i.reader.ReadBytes(0xa)
 			if err == io.EOF {
 				break
 			}
-			toInsert = append(toInsert, r.JSON(string(data)))
+			sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+			stringHeader := reflect.StringHeader{Data: sliceHeader.Data, Len: sliceHeader.Len}
+			toInsert = append(toInsert, r.JSON(*(*string)(unsafe.Pointer(&stringHeader))))
 		}
-		for _, data := range chunkSlice(toInsert, 250) {
+		for _, dta := range chunkSlice(toInsert, 250) {
 			workers.AddJob(func(x interface{}) {
 				_, err := r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn.DB)
 				if err != nil {
 					panic(err)
 				}
-			}, data)
+			}, dta)
 		}
 		workers.Wait()
 		log.Println("Finished")
