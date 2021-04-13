@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
@@ -15,12 +16,14 @@ type databaseImport struct {
 	name string
 	conn *database.Connection
 	tables []string
+	reader *bufio.Reader
 }
 
 func newDatabaseImport(name string, conn *database.Connection) *databaseImport {
 	return &databaseImport {
 		name: name,
 		conn: conn,
+		reader: bufio.NewReader(new(bytes.Buffer)),
 	}
 }
 
@@ -91,23 +94,24 @@ func (i *databaseImport) importTable(name string) error {
 		if err != nil {
 			return err
 		}
-		chunkReader := bufio.NewReader(chunkFile)
+		i.reader.Reset(chunkFile)
 		var toInsert []interface{}
 		for {
-			data, err := chunkReader.ReadBytes(0xa)
+			data, err := i.reader.ReadBytes(0xa)
 			if err == io.EOF {
 				break
 			}
-			var h interface{}
-			json.Unmarshal(data, &h)
-			toInsert = append(toInsert, h)
+			toInsert = append(toInsert, r.JSON(string(data)))
 		}
 		for _, data := range chunkSlice(toInsert, 250) {
-			_, err := r.DB(i.name).Table(name).Insert(data).Run(i.conn.DB)
-			if err != nil {
-				panic(err)
-			}
+			workers.AddJob(func(x interface{}) {
+				_, err := r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn.DB)
+				if err != nil {
+					panic(err)
+				}
+			}, data)
 		}
+		workers.Wait()
 		log.Println("Finished")
 	}
 	return nil

@@ -22,6 +22,7 @@ var (
 	DBToImport = ""
 
 	databases []string
+	workers = newWorkerPool()
 )
 
 func main() {
@@ -45,6 +46,7 @@ func main() {
 	reader := tar.NewReader(decoder)
 
 	dst := ".backups"
+	workers.Spawn(0)
 
 	for {
 		header, err := reader.Next()

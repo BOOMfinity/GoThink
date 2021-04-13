@@ -95,6 +95,7 @@ func main() {
 	var file *os.File
 	var rows uint64
 	now := time.Now()
+	bar1.Set(0)
 	for _, db := range dbs {
 		bar1.Increment()
 		bar1.Prefix(fmt.Sprintf("Exporting '%v'", db))
@@ -104,12 +105,12 @@ func main() {
 		for _, table := range tables {
 			var tableInfo map[string]interface{}
 			r.DB(db).Table(table).Info().ReadOne(&tableInfo, c.DB)
+			bar2.Prefix(fmt.Sprintf("Table '%v'", table))
 			bar2.Increment()
 			buff.Reset()
 			chunkID := 0
 			msg := make(chan interface{})
 			os.MkdirAll(".backups/"+db+"/"+table+"/", os.FileMode(os.O_CREATE))
-			bar2.Prefix(fmt.Sprintf("Table '%v'", table))
 			file, _ = os.Create(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID))
 			cursor, _ := r.DB(db).Table(table, r.TableOpts{ ReadMode: "outdated" }).Run(c.DB)
 			cursor.Listen(msg)
@@ -162,7 +163,10 @@ func main() {
 	tWriter := tar.NewWriter(zWriter)
 
 	dirs, _ := os.ReadDir(".backups")
+	bar1.SetTotal(len(dirs))
 	for _, dir := range dirs {
+		bar1.Prefix(fmt.Sprintf("Packing '%v'", dir))
+		bar1.Increment()
 		check(filepath.Join(".backups", dir.Name()), tWriter)
 	}
 
@@ -172,7 +176,6 @@ func main() {
 	os.RemoveAll(".backups/")
 	bar1.Prefix("Finished!")
 	bar2.Prefix("Finished!")
-	time.Sleep(0 * time.Second)
 	pool.Stop()
 	println()
 	log.Printf("%v rows exported in %v", rows, end.Sub(now).String())
