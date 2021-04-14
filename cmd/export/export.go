@@ -152,7 +152,7 @@ func main() {
 			// Secondary indexes
 			var allIndexes []database.TableIndex
 			r.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, c.DB, r.RunOpts{BinaryFormat: "raw"})
-			iFile, _ := os.OpenFile(fmt.Sprintf(fmt.Sprintf(".backups/%v/%v/info.json", db, table), db, table, chunkID), os.O_CREATE|os.O_RDWR, 0755)
+			iFile, _ := os.OpenFile(fmt.Sprintf(".backups/%v/%v/info.json", db, table), os.O_CREATE|os.O_RDWR, 0755)
 			info := database.TableInfo{
 				PrimaryKey: tableInfo["primary_key"].(string),
 				Indexes:    allIndexes,
