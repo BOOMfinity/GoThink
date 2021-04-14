@@ -4,10 +4,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	"encoding/binary"
 	"flag"
 	"fmt"
 	"github.com/cheggaaa/pb"
+	"github.com/segmentio/encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
 	"log"
@@ -20,10 +21,10 @@ import (
 )
 
 var (
-	ExportPath = flag.String("export", "", "What will be exported. Use a database.table syntax.")
-	ExportAll = false
+	ExportPath    = flag.String("export", "", "What will be exported. Use a database.table syntax.")
+	ExportAll     = false
 	TableToExport = ""
-	DBToExport = ""
+	DBToExport    = ""
 )
 
 func main() {
@@ -52,7 +53,7 @@ func main() {
 	}
 	println()
 	var (
-		dbs rethinkgo.PowerfulStringSlice
+		dbs      rethinkgo.PowerfulStringSlice
 		tableMap = make(database.TableList)
 	)
 	if ExportAll {
@@ -110,36 +111,56 @@ func main() {
 			buff.Reset()
 			chunkID := 0
 			msg := make(chan interface{})
-			os.MkdirAll(".backups/"+db+"/"+table+"/", os.FileMode(os.O_CREATE))
-			file, _ = os.Create(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID))
-			cursor, _ := r.DB(db).Table(table, r.TableOpts{ ReadMode: "outdated" }).Run(c.DB)
+			err = os.MkdirAll(".backups/"+db+"/"+table+"/", 0755)
+			if err != nil {
+				panic(err)
+			}
+			file, err = os.OpenFile(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID), os.O_CREATE|os.O_RDWR, 0755)
+			if err != nil {
+				panic(err)
+			}
+			cursor, _ := r.DB(db).Table(table, r.TableOpts{ReadMode: "outdated"}).Run(c.DB)
 			cursor.Listen(msg)
 			for data := range msg {
 				rows++
 				dataJ, _ := json.Marshal(data)
+				var l = make([]byte, 4)
+				binary.BigEndian.PutUint32(l[0:4], uint32(len(dataJ)))
+				buff.Write(l)
 				buff.Write(dataJ)
-				buff.WriteString("\n")
 				if buff.Len() >= 26214400 { // 25MiB
-					file.Write(buff.Bytes())
+					_, err = file.Write(buff.Bytes())
+					if err != nil {
+						panic(err)
+					}
 					file.Close()
 					chunkID++
 					buff.Reset()
-					file, _ = os.Create(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID))
+					file, err = os.Create(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID))
+					if err != nil {
+						panic(err)
+					}
 					continue
 				}
 			}
-			file.Write(buff.Bytes())
+			_, err = file.Write(buff.Bytes())
+			if err != nil {
+				panic(err)
+			}
 			file.Close()
 
 			// Secondary indexes
 			var allIndexes []database.TableIndex
-			r.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, c.DB, r.RunOpts{ BinaryFormat: "raw" })
-			iFile, _ := os.Create(fmt.Sprintf(".backups/%v/%v/info.json", db, table))
-			info := database.TableInfo {
+			r.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, c.DB, r.RunOpts{BinaryFormat: "raw"})
+			iFile, _ := os.OpenFile(fmt.Sprintf(fmt.Sprintf(".backups/%v/%v/info.json", db, table), db, table, chunkID), os.O_CREATE|os.O_RDWR, 0755)
+			info := database.TableInfo{
 				PrimaryKey: tableInfo["primary_key"].(string),
-				Indexes: allIndexes,
+				Indexes:    allIndexes,
 			}
-			iFile.Write(info.ToJSON())
+			_, err = iFile.Write(info.ToJSON())
+			if err != nil {
+				panic(err)
+			}
 			iFile.Close()
 		}
 	}
@@ -151,7 +172,7 @@ func main() {
 	// tar.gz
 	bar1.Set(0)
 	bar2.Set(0)
-	file, err = os.Create("backup.tar.gz")
+	file, err = os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR, 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +183,10 @@ func main() {
 	//}
 	tWriter := tar.NewWriter(zWriter)
 
-	dirs, _ := os.ReadDir(".backups")
+	dirs, err := os.ReadDir(".backups")
+	if err != nil {
+		panic(err)
+	}
 	bar1.SetTotal(len(dirs))
 	for _, dir := range dirs {
 		bar1.Prefix(fmt.Sprintf("Packing '%v'", dir))
@@ -212,7 +236,7 @@ func parseExportPath(conn *database.Connection) {
 	}
 	DBToExport = str[0]
 	var (
-		dbs rethinkgo.PowerfulStringSlice
+		dbs    rethinkgo.PowerfulStringSlice
 		tables rethinkgo.PowerfulStringSlice
 	)
 	r.DBList().ReadAll(&dbs, conn.DB)

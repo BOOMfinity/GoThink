@@ -10,19 +10,20 @@ import (
 	"os"
 	"path/filepath"
 	"rethinkgo-backups/database"
+	"runtime/pprof"
 	"strings"
 	"time"
 )
 
 var (
-	FilePath = flag.String("file", "", "Path to the backup file")
-	ImportPath = flag.String("i", "", "Use database.table syntax")
-	ImportAll = false
+	FilePath      = flag.String("file", "", "Path to the backup file")
+	ImportPath    = flag.String("i", "", "Use database.table syntax")
+	ImportAll     = false
 	TableToImport = ""
-	DBToImport = ""
+	DBToImport    = ""
 
 	databases []string
-	workers = newWorkerPool()
+	workers   = newWorkerPool()
 )
 
 func main() {
@@ -96,6 +97,9 @@ func main() {
 	println()
 
 	os.RemoveAll(".backups/")
+
+	f, _ := os.Create("x.dmp")
+	pprof.WriteHeapProfile(f)
 }
 
 func parseImportPath() {

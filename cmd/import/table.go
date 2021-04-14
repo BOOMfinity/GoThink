@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
@@ -97,20 +98,34 @@ func (i *databaseImport) importTable(name string) error {
 			return err
 		}
 		i.reader.Reset(chunkFile)
+		var lu uint32
+		var l [4]byte
 		var toInsert []interface{}
-		var data []byte
 		for {
-			data, err = i.reader.ReadBytes(0xa)
-			if err == io.EOF {
+			_, err = io.ReadFull(i.reader, l[:])
+			lu = binary.BigEndian.Uint32(l[0:4])
+			if err != nil {
+				if err != io.EOF {
+					panic(err)
+				}
 				break
 			}
-			sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&data))
+			d := make([]byte, lu)
+			_, err = io.ReadFull(i.reader, d)
+			if err != nil {
+				if err != io.EOF {
+					panic(err)
+				}
+				break
+			}
+
+			sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&d))
 			stringHeader := reflect.StringHeader{Data: sliceHeader.Data, Len: sliceHeader.Len}
 			toInsert = append(toInsert, r.JSON(*(*string)(unsafe.Pointer(&stringHeader))))
 		}
 		for _, dta := range chunkSlice(toInsert, 250) {
 			workers.AddJob(func(x interface{}) {
-				_, err := r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn.DB)
+				_, err = r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn.DB)
 				if err != nil {
 					panic(err)
 				}
