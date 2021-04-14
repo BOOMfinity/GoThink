@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"rethinkgo-backups/database"
-	"runtime/pprof"
 	"strings"
 	"time"
 )
@@ -97,9 +96,6 @@ func main() {
 	println()
 
 	os.RemoveAll(".backups/")
-
-	f, _ := os.Create("x.dmp")
-	pprof.WriteHeapProfile(f)
 }
 
 func parseImportPath() {
