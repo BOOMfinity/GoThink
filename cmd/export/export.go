@@ -3,21 +3,24 @@ package main
 import (
 	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"flag"
 	"fmt"
-	"github.com/cheggaaa/pb"
-	"github.com/segmentio/encoding/json"
-	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	rethinkgo "rethinkgo-backups"
-	"rethinkgo-backups/database"
 	"strings"
 	"time"
+
+	"github.com/cheggaaa/pb"
+	"github.com/klauspost/pgzip"
+	"github.com/segmentio/encoding/json"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
+
+	rethinkgo "rethinkgo-backups"
+	"rethinkgo-backups/database"
 )
 
 var (
@@ -36,7 +39,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	os.RemoveAll(".backups/")
 	println()
 	parseExportPath(c)
 	if DBToExport != "" || TableToExport != "" {
@@ -93,10 +95,19 @@ func main() {
 	bar2.Prefix("Waiting...")
 	pool, _ := pb.StartPool(bar1, bar2)
 	buff := new(bytes.Buffer)
-	var file *os.File
 	var rows uint64
 	now := time.Now()
 	bar1.Set(0)
+	tempDir, err := ioutil.TempDir(os.TempDir(), "gothink.export.*")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := recover(); err != nil {
+			_ = os.RemoveAll(tempDir)
+			panic(err)
+		}
+	}()
 	for _, db := range dbs {
 		bar1.Increment()
 		bar1.Prefix(fmt.Sprintf("Exporting '%v'", db))
@@ -104,6 +115,7 @@ func main() {
 		bar2.SetTotal(len(tables))
 		bar2.Set(0)
 		for _, table := range tables {
+			os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0755)
 			var tableInfo map[string]interface{}
 			r.DB(db).Table(table).Info().ReadOne(&tableInfo, c.DB)
 			bar2.Prefix(fmt.Sprintf("Table '%v'", table))
@@ -111,14 +123,6 @@ func main() {
 			buff.Reset()
 			chunkID := 0
 			msg := make(chan interface{})
-			err = os.MkdirAll(".backups/"+db+"/"+table+"/", 0755)
-			if err != nil {
-				panic(err)
-			}
-			file, err = os.OpenFile(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID), os.O_CREATE|os.O_RDWR, 0755)
-			if err != nil {
-				panic(err)
-			}
 			cursor, _ := r.DB(db).Table(table, r.TableOpts{ReadMode: "outdated"}).Run(c.DB)
 			cursor.Listen(msg)
 			for data := range msg {
@@ -128,95 +132,83 @@ func main() {
 				binary.BigEndian.PutUint32(l[0:4], uint32(len(dataJ)))
 				buff.Write(l)
 				buff.Write(dataJ)
-				if buff.Len() >= 26214400 { // 25MiB
-					_, err = file.Write(buff.Bytes())
+				if buff.Len() >= /*5242880*/ 26214400 { // 25MiB
+					err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunkID)), buff.Bytes(), 0755)
 					if err != nil {
 						panic(err)
 					}
-					file.Close()
 					chunkID++
 					buff.Reset()
-					file, err = os.Create(fmt.Sprintf(".backups/%v/%v/chunk-%v.json", db, table, chunkID))
-					if err != nil {
-						panic(err)
-					}
 					continue
 				}
 			}
-			_, err = file.Write(buff.Bytes())
+			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunkID)), buff.Bytes(), 0755)
 			if err != nil {
 				panic(err)
 			}
-			file.Close()
 
 			// Secondary indexes
 			var allIndexes []database.TableIndex
 			r.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, c.DB, r.RunOpts{BinaryFormat: "raw"})
-			iFile, _ := os.OpenFile(fmt.Sprintf(".backups/%v/%v/info.json", db, table), os.O_CREATE|os.O_RDWR, 0755)
 			info := database.TableInfo{
 				PrimaryKey: tableInfo["primary_key"].(string),
 				Indexes:    allIndexes,
 			}
-			_, err = iFile.Write(info.ToJSON())
+			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/info.json", db, table)), info.ToJSON(), 0755)
 			if err != nil {
 				panic(err)
 			}
-			iFile.Close()
 		}
 	}
-	end := time.Now()
+
 	bar1.Prefix("Waiting...")
 	bar2.Prefix("Waiting...")
-	time.Sleep(0 * time.Second)
 
 	// tar.gz
 	bar1.Set(0)
 	bar2.Set(0)
-	file, err = os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR, 0755)
+	file, err := os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR, 0755)
 	if err != nil {
 		panic(err)
 	}
-	//zWriter, err := zstd.NewWriter(file, zstd.WithEncoderLevel(zstd.SpeedBestCompression),
-	zWriter := gzip.NewWriter(file)
-	//if err != nil {
-	//	panic(err)
-	//}
+	zWriter, _ := pgzip.NewWriterLevel(file, pgzip.BestCompression)
 	tWriter := tar.NewWriter(zWriter)
 
-	dirs, err := os.ReadDir(".backups")
+	dirs, err := os.ReadDir(tempDir)
 	if err != nil {
 		panic(err)
 	}
 	bar1.SetTotal(len(dirs))
 	for _, dir := range dirs {
-		bar1.Prefix(fmt.Sprintf("Packing '%v'", dir))
+		bar1.Prefix(fmt.Sprintf("Packing '%v'", dir.Name()))
 		bar1.Increment()
-		check(filepath.Join(".backups", dir.Name()), tWriter)
+		check(filepath.Join(tempDir, dir.Name()), tWriter, dir.Name())
 	}
 
 	tWriter.Close()
 	zWriter.Close()
 	file.Close()
-	os.RemoveAll(".backups/")
+	os.RemoveAll(tempDir)
 	bar1.Prefix("Finished!")
 	bar2.Prefix("Finished!")
 	pool.Stop()
+	end := time.Now()
 	println()
 	log.Printf("%v rows exported in %v", rows, end.Sub(now).String())
 	println()
 }
 
-func check(path string, tW *tar.Writer) {
+func check(path string, tW *tar.Writer, fixedPath string) {
 	file, _ := os.Open(path)
 	info, _ := file.Stat()
 
 	header, _ := tar.FileInfoHeader(info, info.Name())
-	header.Name = strings.ReplaceAll(strings.ReplaceAll(path, ".backups/", ""), ".backups\\", "")
+	header.Name = fixedPath
 	tW.WriteHeader(header)
 	if info.IsDir() {
 		files, _ := os.ReadDir(path)
 		for _, dirFile := range files {
-			check(filepath.Join(path, dirFile.Name()), tW)
+			check(filepath.Join(path, dirFile.Name()), tW, filepath.Join(fixedPath, dirFile.Name()))
 		}
 		return
 	}

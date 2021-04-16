@@ -6,6 +6,7 @@ import (
 	"flag"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ var (
 	ImportAll     = false
 	TableToImport = ""
 	DBToImport    = ""
+	dst           = ""
 
 	databases []string
 	workers   = newWorkerPool()
@@ -35,7 +37,10 @@ func main() {
 		panic(err)
 	}
 	println()
-	os.RemoveAll(".backups/")
+	dst, err = ioutil.TempDir(os.TempDir(), "gothink.import.*")
+	if err != nil {
+		panic(err)
+	}
 	start := time.Now()
 	file, err := os.Open(*FilePath)
 	if err != nil {
@@ -45,7 +50,6 @@ func main() {
 	decoder, _ := gzip.NewReader(file)
 	reader := tar.NewReader(decoder)
 
-	dst := ".backups"
 	workers.Spawn(0)
 
 	for {
@@ -63,7 +67,6 @@ func main() {
 		}
 
 		target := filepath.Join(dst, header.Name)
-		println(header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
@@ -84,7 +87,7 @@ func main() {
 	}
 	r.DBList().ReadAll(&databases, c.DB)
 
-	dbs, _ := os.ReadDir(".backups")
+	dbs, _ := os.ReadDir(dst)
 
 	for _, db := range dbs {
 		im := newDatabaseImport(db.Name(), c)
@@ -95,7 +98,7 @@ func main() {
 	log.Printf("Imported in %v", time.Now().Sub(start).String())
 	println()
 
-	os.RemoveAll(".backups/")
+	os.RemoveAll(dst)
 }
 
 func parseImportPath() {

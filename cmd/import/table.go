@@ -44,7 +44,7 @@ func (i *databaseImport) importDatabase() error {
 		r.DBCreate(i.name).Run(i.conn.DB)
 	}
 	r.DB(i.name).TableList().ReadAll(&i.tables, i.conn.DB)
-	tables, err := os.ReadDir(filepath.Join(".backups", i.name))
+	tables, err := os.ReadDir(filepath.Join(dst, i.name))
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (i *databaseImport) tableExist(name string) bool {
 
 func (i *databaseImport) importTable(name string) error {
 	var tableInfo database.TableInfo
-	infoFile, _ := os.Open(filepath.Join(".backups", i.name, name, "info.json"))
+	infoFile, _ := os.Open(filepath.Join(dst, i.name, name, "info.json"))
 	parseFile(&tableInfo, infoFile)
 	if !i.tableExist(name) {
 		log.Printf("Creating table '%v' in '%v'...", name, i.name)
@@ -88,12 +88,12 @@ func (i *databaseImport) importTable(name string) error {
 	}
 	r.DB(i.name).Table(name).IndexWait().Run(i.conn.DB)
 	log.Printf("Importing documents...")
-	chunks, _ := os.ReadDir(filepath.Join(".backups", i.name, name))
+	chunks, _ := os.ReadDir(filepath.Join(dst, i.name, name))
 	for _, chunk := range chunks {
 		if chunk.Name() == "info.json" {
 			continue
 		}
-		chunkFile, err := os.Open(filepath.Join(".backups", i.name, name, chunk.Name()))
+		chunkFile, err := os.Open(filepath.Join(dst, i.name, name, chunk.Name()))
 		if err != nil {
 			return err
 		}
