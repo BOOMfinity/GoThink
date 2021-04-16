@@ -167,7 +167,7 @@ func main() {
 	// tar.gz
 	bar1.Set(0)
 	bar2.Set(0)
-	file, err := os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR, 0755)
+	file, err := os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
 	if err != nil {
 		panic(err)
 	}
