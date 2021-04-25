@@ -18,10 +18,16 @@ type TableIndex struct {
 	Function interface{} `json:"function"`
 }
 
+type TableWriteHook struct {
+	Function interface{} `json:"function"`
+}
+
 type TableInfo struct {
-	PrimaryKey string                   `json:"primary_key"`
-	Indexes    []TableIndex             `json:"indexes"`
-	WriteHooks []map[string]interface{} `json:"write_hooks"`
+	PrimaryKey     string          `json:"primary_key"`
+	Indexes        []TableIndex    `json:"indexes"`
+	WriteHook      *TableWriteHook `json:"write_hooks"`
+	TotalDocuments uint64          `json:"total_documents"`
+	TotalSize      uint64          `json:"total_size"`
 }
 
 func (ti TableInfo) ToJSON() (res []byte) {

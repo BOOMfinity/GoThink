@@ -28,6 +28,8 @@ var (
 	ExportAll     = false
 	TableToExport = ""
 	DBToExport    = ""
+	bar1          = pb.New(0).SetMaxWidth(100)
+	bar2          = pb.New(0).SetMaxWidth(100)
 )
 
 func main() {
@@ -81,8 +83,7 @@ func main() {
 	}
 	log.Printf("Exporting %v databases (%v tables)...", len(dbs), tableMap.TotalCount())
 	println()
-	bar1 := pb.New(len(dbs)).SetMaxWidth(100)
-	bar2 := pb.New(0).SetMaxWidth(100)
+	bar1.SetTotal(len(dbs))
 	bar1.ShowElapsedTime = false
 	bar2.ShowElapsedTime = false
 	bar1.ShowFinalTime = false
@@ -108,6 +109,10 @@ func main() {
 			panic(err)
 		}
 	}()
+	var (
+		totalSize      uint64
+		totalDocuments uint64
+	)
 	for _, db := range dbs {
 		bar1.Increment()
 		bar1.Prefix(fmt.Sprintf("Exporting '%v'", db))
@@ -115,6 +120,8 @@ func main() {
 		bar2.SetTotal(len(tables))
 		bar2.Set(0)
 		for _, table := range tables {
+			totalSize = 0
+			totalDocuments = 0
 			os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0755)
 			var tableInfo map[string]interface{}
 			r.DB(db).Table(table).Info().ReadOne(&tableInfo, c.DB)
@@ -132,6 +139,8 @@ func main() {
 				binary.BigEndian.PutUint32(l[0:4], uint32(len(dataJ)))
 				buff.Write(l)
 				buff.Write(dataJ)
+				totalSize += uint64(len(dataJ))
+				totalDocuments++
 				if buff.Len() >= /*5242880*/ 26214400 { // 25MiB
 					err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunkID)), buff.Bytes(), 0755)
 					if err != nil {
@@ -148,11 +157,19 @@ func main() {
 			}
 
 			// Secondary indexes
-			var allIndexes []database.TableIndex
+			var (
+				allIndexes []database.TableIndex
+				whook      *database.TableWriteHook
+			)
+
 			r.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, c.DB, r.RunOpts{BinaryFormat: "raw"})
+			r.DB(db).Table(table).GetWriteHook().ReadOne(&whook, c.DB, r.RunOpts{BinaryFormat: "raw"})
 			info := database.TableInfo{
-				PrimaryKey: tableInfo["primary_key"].(string),
-				Indexes:    allIndexes,
+				PrimaryKey:     tableInfo["primary_key"].(string),
+				Indexes:        allIndexes,
+				WriteHook:      whook,
+				TotalDocuments: totalDocuments,
+				TotalSize:      totalSize,
 			}
 			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/info.json", db, table)), info.ToJSON(), 0755)
 			if err != nil {
@@ -179,6 +196,9 @@ func main() {
 		panic(err)
 	}
 	bar1.SetTotal(len(dirs))
+	bar2.SetTotal(0)
+	bar2.Set(0)
+	bar2.Prefix("Waiting...")
 	for _, dir := range dirs {
 		bar1.Prefix(fmt.Sprintf("Packing '%v'", dir.Name()))
 		bar1.Increment()
@@ -194,7 +214,7 @@ func main() {
 	pool.Stop()
 	end := time.Now()
 	println()
-	log.Printf("%v rows exported in %v", rows, end.Sub(now).String())
+	log.Printf("%v documents exported in %v", rows, end.Sub(now).String())
 	println()
 }
 

@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"reflect"
-	"rethinkgo-backups/database"
 	"unsafe"
+
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
+	"rethinkgo-backups/database"
 )
 
 type databaseImport struct {
@@ -132,6 +133,10 @@ func (i *databaseImport) importTable(name string) error {
 			}, dta)
 		}
 		workers.Wait()
+		// TODO: Write hook import
+		//if tableInfo.WriteHook != nil {
+		//	_, _ = r.DB(i.name).Table(name).SetWriteHook(tableInfo.WriteHook.Function).Run(i.conn.DB)
+		//}
 		log.Println("Finished")
 	}
 	return nil
