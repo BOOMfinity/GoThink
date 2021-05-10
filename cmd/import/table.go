@@ -12,8 +12,8 @@ import (
 	"reflect"
 	"unsafe"
 
+	"GoThink/database"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
-	"rethinkgo-backups/database"
 )
 
 type databaseImport struct {

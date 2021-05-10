@@ -14,13 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"GoThink"
+
 	"github.com/cheggaaa/pb"
 	"github.com/klauspost/pgzip"
 	"github.com/segmentio/encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 
-	rethinkgo "rethinkgo-backups"
-	"rethinkgo-backups/database"
+	"GoThink/database"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 
 func main() {
 	println()
-	println("Welcome to RethinkGO-Backups CLI")
+	println("Welcome to RethinkGO-Backups CLI v" + GoThink.Version)
 	println()
 	flag.Parse()
 	c, err := database.NewConnection()
@@ -57,7 +58,7 @@ func main() {
 	}
 	println()
 	var (
-		dbs      rethinkgo.PowerfulStringSlice
+		dbs      GoThink.PowerfulStringSlice
 		tableMap = make(database.TableList)
 	)
 	if ExportAll {
@@ -68,7 +69,7 @@ func main() {
 			return a != "rethinkdb"
 		})
 	} else {
-		dbs = rethinkgo.PowerfulStringSlice{DBToExport}
+		dbs = GoThink.PowerfulStringSlice{DBToExport}
 	}
 	if TableToExport == "" {
 		for _, db := range dbs {
@@ -79,7 +80,7 @@ func main() {
 			tableMap[db] = tables
 		}
 	} else {
-		tableMap[DBToExport] = rethinkgo.PowerfulStringSlice{TableToExport}
+		tableMap[DBToExport] = GoThink.PowerfulStringSlice{TableToExport}
 	}
 	log.Printf("Exporting %v databases (%v tables)...", len(dbs), tableMap.TotalCount())
 	println()
@@ -181,6 +182,8 @@ func main() {
 	bar1.Prefix("Waiting...")
 	bar2.Prefix("Waiting...")
 
+	err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0755)
+
 	// tar.gz
 	bar1.Set(0)
 	bar2.Set(0)
@@ -248,8 +251,8 @@ func parseExportPath(conn *database.Connection) {
 	}
 	DBToExport = str[0]
 	var (
-		dbs    rethinkgo.PowerfulStringSlice
-		tables rethinkgo.PowerfulStringSlice
+		dbs    GoThink.PowerfulStringSlice
+		tables GoThink.PowerfulStringSlice
 	)
 	r.DBList().ReadAll(&dbs, conn.DB)
 	if !(func() bool {

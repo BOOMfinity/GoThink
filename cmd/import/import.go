@@ -4,15 +4,18 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"flag"
-	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"rethinkgo-backups/database"
 	"strings"
 	"time"
+
+	"GoThink"
+	"GoThink/database"
+	"github.com/hashicorp/go-version"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (
@@ -29,7 +32,7 @@ var (
 
 func main() {
 	println()
-	println("Welcome to RethinkGO-Backups CLI")
+	println("Welcome to RethinkGO-Backups CLI v" + GoThink.Version)
 	println()
 	flag.Parse()
 	c, err := database.NewConnection()
@@ -49,6 +52,7 @@ func main() {
 	parseImportPath()
 	decoder, _ := gzip.NewReader(file)
 	reader := tar.NewReader(decoder)
+	var ver *version.Version
 
 	workers.Spawn(0)
 	var (
@@ -70,6 +74,14 @@ func main() {
 		case err != nil:
 			panic(err)
 		case header == nil:
+			continue
+		}
+		if header.Name == ".version" {
+			data, _ := io.ReadAll(reader)
+			ver, _ = version.NewVersion(string(data))
+			if !GoThink.Supported.Check(ver) {
+				log.Fatalf("This version of GoThink (%v) doesn't support backups from GoThink v%v. To continue, please download the older CLI version that supports this backup version.", GoThink.Version, ver.String())
+			}
 			continue
 		}
 		if !strings.HasPrefix(header.Name, importP) {

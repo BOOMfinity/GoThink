@@ -1,4 +1,4 @@
-package rethinkgo_backups
+package GoThink
 
 import (
 	"fmt"

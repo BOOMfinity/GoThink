@@ -1,9 +1,10 @@
-module rethinkgo-backups
+module GoThink
 
 go 1.16
 
 require (
 	github.com/cheggaaa/pb v1.0.29
+	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/klauspost/compress v1.12.1 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/segmentio/encoding v0.2.17
