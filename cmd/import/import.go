@@ -51,6 +51,13 @@ func main() {
 	reader := tar.NewReader(decoder)
 
 	workers.Spawn(0)
+	var (
+		importP string
+		found   = false
+	)
+	if DBToImport != "" {
+		importP = filepath.Join(DBToImport, TableToImport)
+	}
 
 	for {
 		header, err := reader.Next()
@@ -65,7 +72,10 @@ func main() {
 		case header == nil:
 			continue
 		}
-
+		if !strings.HasPrefix(header.Name, importP) {
+			continue
+		}
+		found = true
 		target := filepath.Join(dst, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
@@ -84,6 +94,9 @@ func main() {
 			}
 			f.Close()
 		}
+	}
+	if !found {
+		log.Fatalf("Database or table not found. Check that the -i flag is set correctly.")
 	}
 	r.DBList().ReadAll(&databases, c.DB)
 
