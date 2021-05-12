@@ -3,12 +3,12 @@ all:
 	make linux
 
 windows:
-	GOOS=windows go build -ldflags="-s -w" -o="gothink-export.exe" ./cmd/export/export.go
-	GOOS=windows go build -ldflags="-s -w" -o="gothink-import.exe" ./cmd/import/import.go ./cmd/import/table.go ./cmd/import/workers.go
+	GOOS=windows go build -ldflags="-s -w" -o="build/gothink-export.exe" ./cmd/gothink-export/export.go
+	GOOS=windows go build -ldflags="-s -w" -o="build/gothink-import.exe" ./cmd/gothink-import/import.go ./cmd/gothink-import/table.go ./cmd/gothink-import/workers.go
 
 linux:
-	GOOS=linux go build -ldflags="-s -w" -o="gothink-export" ./cmd/export/export.go
-	GOOS=linux go build -ldflags="-s -w" -o="gothink-import" ./cmd/import/import.go ./cmd/import/table.go ./cmd/import/workers.go
+	GOOS=linux go build -ldflags="-s -w" -o="build/gothink-export" ./cmd/gothink-export/export.go
+	GOOS=linux go build -ldflags="-s -w" -o="build/gothink-import" ./cmd/gothink-import/import.go ./cmd/gothink-import/table.go ./cmd/gothink-import/workers.go
 
 LOGS=/dev/null
 

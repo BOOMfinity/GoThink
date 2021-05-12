@@ -6,18 +6,18 @@ import (
 )
 
 func newWorker() *worker {
-	return &worker {
+	return &worker{
 		receiver: make(chan *workerData, 5000),
 	}
 }
 
 type workerData struct {
 	handler func(x interface{})
-	data interface{}
+	data    interface{}
 }
 
 type worker struct {
-	jobs uint64
+	jobs     uint64
 	receiver chan *workerData
 }
 
@@ -30,17 +30,17 @@ func (w *worker) run(finished chan<- bool) {
 }
 
 func newWorkerPool() *workerPool {
-	return &workerPool {
-		finished: make(chan bool, 5000),
+	return &workerPool{
+		finished:  make(chan bool, 5000),
 		WaitGroup: new(sync.WaitGroup),
-		mutex: new(sync.Mutex),
+		mutex:     new(sync.Mutex),
 	}
 }
 
 type workerPool struct {
 	workers []*worker
 	*sync.WaitGroup
-	mutex *sync.Mutex
+	mutex    *sync.Mutex
 	finished chan bool
 }
 
@@ -61,9 +61,9 @@ func (wp *workerPool) AddJob(job func(x interface{}), data interface{}) {
 		return
 	}
 	wp.Add(1)
-	wo.receiver <- &workerData {
+	wo.receiver <- &workerData{
 		handler: job,
-		data: data,
+		data:    data,
 	}
 	wo.jobs++
 }
