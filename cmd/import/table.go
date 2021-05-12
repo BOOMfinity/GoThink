@@ -12,7 +12,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	"GoThink/database"
+	"github.com/BOOMfinity-Developers/GoThink/database"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 

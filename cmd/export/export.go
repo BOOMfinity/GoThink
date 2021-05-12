@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"GoThink"
+	"github.com/BOOMfinity-Developers/GoThink"
 
 	"github.com/cheggaaa/pb"
 	"github.com/klauspost/pgzip"
 	"github.com/segmentio/encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 
-	"GoThink/database"
+	"github.com/BOOMfinity-Developers/GoThink/database"
 )
 
 var (

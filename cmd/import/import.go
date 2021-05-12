@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"GoThink"
-	"GoThink/database"
+	"github.com/BOOMfinity-Developers/GoThink"
+	"github.com/BOOMfinity-Developers/GoThink/database"
 	"github.com/hashicorp/go-version"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
