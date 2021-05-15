@@ -1,6 +1,19 @@
-package database
+package pkg
 
-import "encoding/json"
+import (
+	"github.com/segmentio/encoding/json"
+)
+
+type ToExport struct {
+	Table    string
+	Database string
+	All      bool
+}
+
+type TableDumpResult struct {
+	totalSize      uint64
+	totalDocuments uint64
+}
 
 type TableList map[string][]string
 

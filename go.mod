@@ -9,5 +9,6 @@ require (
 	github.com/klauspost/compress v1.12.1 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/segmentio/encoding v0.2.17
+	github.com/urfave/cli/v2 v2.3.0 // indirect
 	gopkg.in/rethinkdb/rethinkdb-go.v6 v6.2.1
 )

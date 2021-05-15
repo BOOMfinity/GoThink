@@ -1,4 +1,4 @@
-package main
+package _import
 
 import (
 	"bufio"
@@ -12,23 +12,32 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/BOOMfinity-Developers/GoThink/database"
+	"github.com/BOOMfinity-Developers/GoThink/pkg"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 type databaseImport struct {
-	name   string
-	conn   *database.Connection
-	tables []string
-	reader *bufio.Reader
+	name      string
+	conn      *r.Session
+	tables    []string
+	databases []string
+	reader    *bufio.Reader
+	workers   *workerPool
+	dst       string
 }
 
-func newDatabaseImport(name string, conn *database.Connection) *databaseImport {
+func NewDatabaseImport(name string, conn *r.Session, pool *workerPool, databases []string) *databaseImport {
 	return &databaseImport{
-		name:   name,
-		conn:   conn,
-		reader: bufio.NewReader(bytes.NewBuffer(nil)),
+		name:      name,
+		conn:      conn,
+		workers:   pool,
+		databases: databases,
+		reader:    bufio.NewReader(bytes.NewBuffer(nil)),
 	}
+}
+
+func (i *databaseImport) SetDestination(path string) {
+	i.dst = path
 }
 
 func (i *databaseImport) Run() error {
@@ -40,12 +49,12 @@ func (i *databaseImport) Run() error {
 }
 
 func (i *databaseImport) importDatabase() error {
-	if !checkDatabase(i.name) {
+	if !checkDatabase(i.databases, i.name) {
 		log.Printf("Creating '%v'...", i.name)
-		r.DBCreate(i.name).Run(i.conn.DB)
+		r.DBCreate(i.name).Run(i.conn)
 	}
-	r.DB(i.name).TableList().ReadAll(&i.tables, i.conn.DB)
-	tables, err := os.ReadDir(filepath.Join(dst, i.name))
+	r.DB(i.name).TableList().ReadAll(&i.tables, i.conn)
+	tables, err := os.ReadDir(filepath.Join(i.dst, i.name))
 	if err != nil {
 		return err
 	}
@@ -68,33 +77,35 @@ func (i *databaseImport) tableExist(name string) bool {
 }
 
 func (i *databaseImport) importTable(name string) error {
-	var tableInfo database.TableInfo
-	infoFile, _ := os.Open(filepath.Join(dst, i.name, name, "info.json"))
-	parseFile(&tableInfo, infoFile)
+	var tableInfo pkg.TableInfo
+	infoFile, _ := os.Open(filepath.Join(i.dst, i.name, name, "info.json"))
+	if err := parseFile(&tableInfo, infoFile); err != nil {
+		return err
+	}
 	if !i.tableExist(name) {
 		log.Printf("Creating table '%v' in '%v'...", name, i.name)
 		r.DB(i.name).TableCreate(name, r.TableCreateOpts{
 			PrimaryKey: tableInfo.PrimaryKey,
-		}).Run(i.conn.DB)
+		}).Run(i.conn)
 		r.DB(i.name).Table(name).Wait(r.WaitOpts{
 			WaitFor: name,
-		}).Run(i.conn.DB)
+		}).Run(i.conn)
 	}
 	log.Printf("Importing indexes...")
 	for _, index := range tableInfo.Indexes {
 		_, _ = r.DB(i.name).Table(name).IndexCreateFunc(index.Index, index.Function, r.IndexCreateOpts{
 			Geo:   index.Geo,
 			Multi: index.Multi,
-		}).Run(i.conn.DB)
+		}).Run(i.conn)
 	}
-	r.DB(i.name).Table(name).IndexWait().Run(i.conn.DB)
+	r.DB(i.name).Table(name).IndexWait().Run(i.conn)
 	log.Printf("Importing documents...")
-	chunks, _ := os.ReadDir(filepath.Join(dst, i.name, name))
+	chunks, _ := os.ReadDir(filepath.Join(i.dst, i.name, name))
 	for _, chunk := range chunks {
 		if chunk.Name() == "info.json" {
 			continue
 		}
-		chunkFile, err := os.Open(filepath.Join(dst, i.name, name, chunk.Name()))
+		chunkFile, err := os.Open(filepath.Join(i.dst, i.name, name, chunk.Name()))
 		if err != nil {
 			return err
 		}
@@ -125,17 +136,17 @@ func (i *databaseImport) importTable(name string) error {
 			toInsert = append(toInsert, r.JSON(*(*string)(unsafe.Pointer(&stringHeader))))
 		}
 		for _, dta := range chunkSlice(toInsert, 250) {
-			workers.AddJob(func(x interface{}) {
-				_, err = r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn.DB)
+			i.workers.AddJob(func(x interface{}) {
+				_, err = r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn)
 				if err != nil {
 					panic(err)
 				}
 			}, dta)
 		}
-		workers.Wait()
+		i.workers.Wait()
 		// TODO: Write hook import
 		//if tableInfo.WriteHook != nil {
-		//	_, _ = r.DB(i.name).Table(name).SetWriteHook(tableInfo.WriteHook.Function).Run(i.conn.DB)
+		//	_, _ = r.DB(i.name).Table(name).SetWriteHook(tableInfo.WriteHook.Function).Run(i.conn)
 		//}
 		log.Println("Finished")
 	}
@@ -160,8 +171,8 @@ func chunkSlice(xs []interface{}, chunkSize int) [][]interface{} {
 	return divided
 }
 
-func checkDatabase(name string) bool {
-	for _, db := range databases {
+func checkDatabase(dbs []string, name string) bool {
+	for _, db := range dbs {
 		if db == name {
 			return true
 		}
