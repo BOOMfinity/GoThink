@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/binary"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/BOOMfinity-Developers/GoThink"
-
 	"github.com/cheggaaa/pb"
+	"github.com/jessevdk/go-flags"
 	"github.com/klauspost/pgzip"
 	"github.com/segmentio/encoding/json"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
@@ -25,19 +25,35 @@ import (
 )
 
 var (
-	ExportPath    = flag.String("export", "", "What will be exported. Use a database.table syntax.")
 	ExportAll     = false
 	TableToExport = ""
 	DBToExport    = ""
 	bar1          = pb.New(0).SetMaxWidth(100)
 	bar2          = pb.New(0).SetMaxWidth(100)
+	Flags         GoThink.ExportFlags
+	parser        = flags.NewNamedParser("gothink-export", flags.Default)
 )
 
-func main() {
+func init() {
 	println()
 	println("Welcome to RethinkGO-Backups CLI v" + GoThink.Version)
 	println()
-	flag.Parse()
+	parser.AddGroup("Export", "", &Flags)
+	database.AddFlags(parser)
+	_, err := parser.Parse()
+	var parserError *flags.Error
+	if errors.As(err, &parserError) {
+		if parserError.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		panic(err)
+	}
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
 	c, err := database.NewConnection()
 	if err != nil {
 		panic(err)
@@ -187,7 +203,8 @@ func main() {
 	// tar.gz
 	bar1.Set(0)
 	bar2.Set(0)
-	file, err := os.OpenFile("backup.tar.gz", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
+	os.MkdirAll(filepath.Dir(Flags.File), 0755)
+	file, err := os.OpenFile(Flags.File, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -240,12 +257,12 @@ func check(path string, tW *tar.Writer, fixedPath string) {
 }
 
 func parseExportPath(conn *database.Connection) {
-	if ExportPath == nil || *ExportPath == "" {
+	if Flags.Path == "" {
 		log.Println("An export path not specified. Exporting all data.")
 		ExportAll = true
 		return
 	}
-	str := strings.Split(*ExportPath, ".")
+	str := strings.Split(Flags.Path, ".")
 	if len(str) == 2 {
 		TableToExport = str[1]
 	}

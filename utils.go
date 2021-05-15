@@ -28,3 +28,20 @@ func ReadableByteCount(b uint64) string {
 	return fmt.Sprintf("%.2f %ciB",
 		float64(b)/float64(div), "KMGTPE"[exp])
 }
+
+type DatabaseFlags struct {
+	Host         string `long:"host" description:"RethinkDB address" default:"localhost"`
+	Password     string `long:"pass" description:"RethinkDB client port"`
+	PasswordFile string `long:"pass-file" description:"Path to the file with password"`
+	Port         uint   `long:"port" description:"Enter your password to the RethinkDB (admin user)" default:"28015"`
+}
+
+type ExportFlags struct {
+	Path string `long:"export" description:"What will be exported. Use database.table syntax."`
+	File string `long:"file" description:"Output backup file name (or path)" default:"backup.tar.gz"`
+}
+
+type ImportFlags struct {
+	Import string `long:"import" description:"Use database.table syntax"`
+	File   string `long:"file" description:"Path to the backup file" default:"backup.tar.gz"`
+}

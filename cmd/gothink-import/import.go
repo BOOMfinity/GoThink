@@ -3,7 +3,7 @@ package main
 import (
 	"archive/tar"
 	"compress/gzip"
-	"flag"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,12 +15,11 @@ import (
 	"github.com/BOOMfinity-Developers/GoThink"
 	"github.com/BOOMfinity-Developers/GoThink/database"
 	"github.com/hashicorp/go-version"
+	"github.com/jessevdk/go-flags"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (
-	FilePath      = flag.String("file", "", "Path to the backup file")
-	ImportPath    = flag.String("i", "", "Use database.table syntax")
 	ImportAll     = false
 	TableToImport = ""
 	DBToImport    = ""
@@ -28,13 +27,31 @@ var (
 
 	databases []string
 	workers   = newWorkerPool()
+
+	Flags  GoThink.ImportFlags
+	parser = flags.NewNamedParser("gothink-import", flags.Default)
 )
 
-func main() {
+func init() {
 	println()
 	println("Welcome to RethinkGO-Backups CLI v" + GoThink.Version)
 	println()
-	flag.Parse()
+	parser.AddGroup("Import", "", &Flags)
+	database.AddFlags(parser)
+	_, err := parser.Parse()
+	var parserError *flags.Error
+	if errors.As(err, &parserError) {
+		if parserError.Type == flags.ErrHelp {
+			os.Exit(0)
+		}
+		panic(err)
+	}
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
 	c, err := database.NewConnection()
 	if err != nil {
 		panic(err)
@@ -45,7 +62,7 @@ func main() {
 		panic(err)
 	}
 	start := time.Now()
-	file, err := os.Open(*FilePath)
+	file, err := os.Open(Flags.File)
 	if err != nil {
 		panic(err)
 	}
@@ -127,12 +144,12 @@ func main() {
 }
 
 func parseImportPath() {
-	if ImportPath == nil || *ImportPath == "" {
+	if Flags.Import == "" {
 		log.Println("An export path not specified. Importing all data.")
 		ImportAll = true
 		return
 	}
-	str := strings.Split(*ImportPath, ".")
+	str := strings.Split(Flags.Import, ".")
 	if len(str) == 2 {
 		TableToImport = str[1]
 	}
