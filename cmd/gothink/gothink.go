@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/BOOMfinity-Developers/GoThink"
+	"github.com/BOOMfinity-Developers/GoThink/pkg/check"
 	"github.com/BOOMfinity-Developers/GoThink/pkg/database"
 	"github.com/BOOMfinity-Developers/GoThink/pkg/export"
 	_import "github.com/BOOMfinity-Developers/GoThink/pkg/import"
@@ -91,6 +93,51 @@ func main() {
 				}...),
 				Action: func(context *cli.Context) error {
 					return database.CLIMiddleware(context, _import.RunFromCLI)
+				},
+			},
+			{
+				Name:        "check",
+				Usage:       "Compare 2 databases. Useful if you want to check if backup was restored correctly.",
+				Description: "Compare 2 databases. Useful if you want to check if backup was restored correctly.\n\nIMPORTANT: This command may take a long time because it compares ALL documents and their size.",
+				Flags: append(globalFlags, []cli.Flag{
+					&cli.StringFlag{
+						Name:     "host-b",
+						Required: true,
+						Usage:    "Target RethinkDB server address",
+					},
+					&cli.StringFlag{
+						Name:    "password-b",
+						Aliases: []string{"pass-b", "p-b"},
+						Usage:   "Target RethinkDB server password",
+					},
+					&cli.UintFlag{
+						Name:  "port-b",
+						Value: 28015,
+						Usage: "Target RethinkDB client port",
+					},
+					&cli.StringFlag{
+						Name:    "password-file-b",
+						Aliases: []string{"pf-b"},
+						Usage:   "Path to the file containing the password for your database",
+					},
+					&cli.StringFlag{
+						Name:    "database",
+						Aliases: []string{"db"},
+						Usage:   "Database name to check",
+					},
+				}...),
+				Action: func(ctx *cli.Context) error {
+					return database.CLIMiddleware(ctx, func(ctx2 *cli.Context) error {
+						println()
+						println("Connecting to the target server...")
+						println()
+						db, err := database.CreateConnection(ctx2.String("host-b"), ctx2.String("password-b"), ctx2.String("password-file-b"), ctx2.Uint("port-b"))
+						if err != nil {
+							return err
+						}
+						ctx2.Context = context.WithValue(ctx2.Context, "database-b", db)
+						return check.RunFromCLI(ctx2)
+					})
 				},
 			},
 		},
