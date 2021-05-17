@@ -13,32 +13,32 @@ import (
 )
 
 func main() {
+	globalFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:  "host",
+			Value: "localhost",
+			Usage: "Your RethinkDB server address",
+		},
+		&cli.StringFlag{
+			Name:    "password",
+			Aliases: []string{"pass", "p"},
+			Usage:   "Your RethinkDB server password",
+		},
+		&cli.UintFlag{
+			Name:  "port",
+			Value: 28015,
+			Usage: "Your RethinkDB client port",
+		},
+		&cli.StringFlag{
+			Name:    "password-file",
+			Aliases: []string{"pf"},
+			Usage:   "Path to the file containing the password for your database",
+		},
+	}
 	app := &cli.App{
 		Name:      "GoThink",
 		Usage:     "Fast and simple RethinkDB backup tool",
 		UsageText: "gothink <command> <options...> - run 'gothink <command> --help' for more details about a command",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "host",
-				Value: "localhost",
-				Usage: "Your RethinkDB server address",
-			},
-			&cli.StringFlag{
-				Name:    "password",
-				Aliases: []string{"pass", "p"},
-				Usage:   "Your RethinkDB server password",
-			},
-			&cli.UintFlag{
-				Name:  "port",
-				Value: 28015,
-				Usage: "Your RethinkDB client port",
-			},
-			&cli.StringFlag{
-				Name:    "password-file",
-				Aliases: []string{"pf"},
-				Usage:   "Path to the file containing the password for your database",
-			},
-		},
 		Commands: []*cli.Command{
 			{
 				Name:        "version",
@@ -54,7 +54,7 @@ func main() {
 				Aliases:     []string{"e"},
 				Usage:       "Exports documents from RethinkDB",
 				Description: "It allows you to dump all or selected data from RethinkDB",
-				Flags: []cli.Flag{
+				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
 						Name:    "export-path",
 						Aliases: []string{"export", "e"},
@@ -66,7 +66,7 @@ func main() {
 						Usage:   "Just output file name / path",
 						Value:   "backup.tar.gz",
 					},
-				},
+				}...),
 				Action: func(context *cli.Context) error {
 					return database.CLIMiddleware(context, export.RunFromCLI)
 				},
@@ -76,7 +76,7 @@ func main() {
 				Aliases:     []string{"i"},
 				Usage:       "Restores data from backup",
 				Description: "It allows you to restore a backup. At the moment, GoThink only supports its own backups. BACKUPS FROM PYTHON DRIVER ARE NOT YET SUPPORTED!\nAlso, this version of GoThink only supports backups from GoThink " + GoThink.Supported.String(),
-				Flags: []cli.Flag{
+				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
 						Name:    "import-path",
 						Aliases: []string{"import", "i"},
@@ -88,7 +88,7 @@ func main() {
 						Usage:   "Path to the backup file",
 						Value:   "backup.tar.gz",
 					},
-				},
+				}...),
 				Action: func(context *cli.Context) error {
 					return database.CLIMiddleware(context, _import.RunFromCLI)
 				},
