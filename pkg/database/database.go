@@ -25,15 +25,15 @@ func CLIMiddleware(ctx *cli.Context, run cli.ActionFunc) error {
 func CreateConnection(host, password, passwordFile string, port uint) (*rethinkdb.Session, error) {
 	log.Println("Checking config...")
 	if host == "" {
-		return nil, errors.New("Host address cannot be empty!")
+		return nil, errors.New("host address cannot be empty")
 	}
 	if port == 0 {
-		return nil, errors.New("RethinkDB client port cannot be empty!")
+		return nil, errors.New("client port cannot be empty")
 	}
 	if passwordFile != "" {
 		if PasswordFile, err := os.Open(passwordFile); err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return nil, errors.New("Password file not found!")
+				return nil, errors.New("password file not found")
 			} else {
 				return nil, err
 			}

@@ -29,7 +29,7 @@ func main() {
 		&cli.UintFlag{
 			Name:  "port",
 			Value: 28015,
-			Usage: "Your RethinkDB client port",
+			Usage: "Your RethinkDB client driver port",
 		},
 		&cli.StringFlag{
 			Name:    "password-file",
@@ -40,11 +40,11 @@ func main() {
 	app := &cli.App{
 		Name:      "GoThink",
 		Usage:     "Fast and simple RethinkDB backup tool",
-		UsageText: "gothink <command> <options...> - run 'gothink <command> --help' for more details about a command",
+		UsageText: "gothink <command> <options...> - run 'gothink <command> --help' for more details",
 		Commands: []*cli.Command{
 			{
 				Name:        "version",
-				Description: "Just shows a GoThink version",
+				Description: "Shows GoThink version",
 				Aliases:     []string{"v", "ver"},
 				Action: func(context *cli.Context) error {
 					fmt.Printf("GoThink: v%v. Supports backups from GoThink %v\n", GoThink.Version, GoThink.Supported.String())
@@ -55,17 +55,17 @@ func main() {
 				Name:        "export",
 				Aliases:     []string{"e"},
 				Usage:       "Exports documents from RethinkDB",
-				Description: "It allows you to dump all or selected data from RethinkDB",
+				Description: "It allows you to dump all or selected data",
 				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
 						Name:    "export-path",
 						Aliases: []string{"export", "e"},
-						Usage:   "What will be exported. Use database.table syntax",
+						Usage:   "Choose what will be exported. Use 'database.table' syntax",
 					},
 					&cli.StringFlag{
 						Name:    "output",
 						Aliases: []string{"file", "f"},
-						Usage:   "Just output file name / path",
+						Usage:   "Output filename or path",
 						Value:   "backup.tar.gz",
 					},
 				}...),
@@ -77,12 +77,12 @@ func main() {
 				Name:        "import",
 				Aliases:     []string{"i"},
 				Usage:       "Restores data from backup",
-				Description: "It allows you to restore a backup. At the moment, GoThink only supports its own backups. BACKUPS FROM PYTHON DRIVER ARE NOT YET SUPPORTED!\nAlso, this version of GoThink only supports backups from GoThink " + GoThink.Supported.String(),
+				Description: "It allows you to restore a backup. At the moment, GoThink only supports its own backups. BACKUPS FROM OTHER DRIVERS ARE NOT YET SUPPORTED!\nNote: This version of GoThink only supports backups from GoThink " + GoThink.Supported.String(),
 				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
 						Name:    "import-path",
 						Aliases: []string{"import", "i"},
-						Usage:   "What will be imported. Use database.table syntax",
+						Usage:   "What will be imported. Use 'database.table' syntax",
 					},
 					&cli.StringFlag{
 						Name:    "import-file",
@@ -97,8 +97,8 @@ func main() {
 			},
 			{
 				Name:        "check",
-				Usage:       "Compare 2 databases. Useful if you want to check if backup was restored correctly.",
-				Description: "Compare 2 databases. Useful if you want to check if backup was restored correctly.\n\nIMPORTANT: This command may take a long time because it compares ALL documents and their size.",
+				Usage:       "<venom dzbanie dorób>",
+				Description: "Compares two databases. Useful, if you want to check if backup was restored correctly.\n\nIMPORTANT: This command may take a long time because it compares ALL documents and their size.",
 				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
 						Name:     "host-b",
@@ -113,7 +113,7 @@ func main() {
 					&cli.UintFlag{
 						Name:  "port-b",
 						Value: 28015,
-						Usage: "Target RethinkDB client port",
+						Usage: "Target RethinkDB client driver port",
 					},
 					&cli.StringFlag{
 						Name:    "password-file-b",

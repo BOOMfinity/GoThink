@@ -84,7 +84,7 @@ func UnzipFile(filePath string, dst string, importPath string) error {
 			data, _ := io.ReadAll(reader)
 			ver, _ = version.NewVersion(string(data))
 			if !GoThink.Supported.Check(ver) {
-				log.Fatalf("This version of GoThink (%v) doesn't support backups from GoThink v%v. To continue, please download the older CLI version that supports this backup version.", GoThink.Version, ver.String())
+				log.Fatalf("This version of GoThink (%v) does NOT support backups from GoThink v%v. To continue, please download the older version that supports this backup.", GoThink.Version, ver.String())
 			}
 			continue
 		}
@@ -119,7 +119,7 @@ func UnzipFile(filePath string, dst string, importPath string) error {
 
 func ParseImportPath(path string) (res pkg.ToExport) {
 	if path == "" {
-		log.Println("An import path not specified. Importing all data.")
+		log.Println("Import path not specified. Importing all data.")
 		res.All = true
 		return
 	}

@@ -31,17 +31,17 @@ func ReadableByteCount(b uint64) string {
 
 type DatabaseFlags struct {
 	Host         string `long:"host" description:"RethinkDB address" default:"localhost"`
-	Password     string `long:"pass" description:"RethinkDB client port"`
+	Password     string `long:"pass" description:"RethinkDB admin user password"`
 	PasswordFile string `long:"pass-file" description:"Path to the file with password"`
-	Port         uint   `long:"port" description:"Enter your password to the RethinkDB (admin user)" default:"28015"`
+	Port         uint   `long:"port" description:"RethinkDB client driver port" default:"28015"`
 }
 
 type ExportFlags struct {
 	Path string `long:"export" description:"What will be exported. Use database.table syntax."`
-	File string `long:"file" description:"Output backup file name (or path)" default:"backup.tar.gz"`
+	File string `long:"file" description:"Backup filename or path" default:"backup.tar.gz"`
 }
 
 type ImportFlags struct {
 	Import string `long:"import" description:"Use database.table syntax"`
-	File   string `long:"file" description:"Path to the backup file" default:"backup.tar.gz"`
+	File   string `long:"file" description:"Backup filename or path" default:"backup.tar.gz"`
 }

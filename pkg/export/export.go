@@ -241,7 +241,7 @@ func ForEachTables(DB *rethinkdb.Session, db, table string, run func(data interf
 
 func ParseExportPath(db *rethinkdb.Session, path string) (ex pkg.ToExport, err error) {
 	if path == "" {
-		log.Println("An export path not specified. Exporting all data.")
+		log.Println("Export path not specified - exporting all data!")
 		ex.All = true
 		return
 	}
@@ -263,7 +263,7 @@ func ParseExportPath(db *rethinkdb.Session, path string) (ex pkg.ToExport, err e
 		}
 		return false
 	})() {
-		err = errors.New("Database not found")
+		err = errors.New("database not found")
 		return
 	}
 	rethinkdb.DB(ex.Database).TableList().ReadAll(&tables, db)
@@ -275,7 +275,7 @@ func ParseExportPath(db *rethinkdb.Session, path string) (ex pkg.ToExport, err e
 		}
 		return false
 	})() {
-		err = errors.New("Table not found")
+		err = errors.New("table not found")
 		return
 	}
 	return
