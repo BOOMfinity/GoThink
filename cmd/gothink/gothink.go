@@ -97,7 +97,7 @@ func main() {
 			},
 			{
 				Name:        "check",
-				Usage:       "<venom dzbanie dorób>",
+				Usage:       "Compares two databases. Useful, if you want to check if backup was restored correctly",
 				Description: "Compares two databases. Useful, if you want to check if backup was restored correctly.\n\nIMPORTANT: This command may take a long time because it compares ALL documents and their size.",
 				Flags: append(globalFlags, []cli.Flag{
 					&cli.StringFlag{
