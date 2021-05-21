@@ -28,7 +28,16 @@ Run `gothink -h` for more information about available commands. It's pretty stra
 
 # Benchmarks
 
-SOON™️
+![image](https://user-images.githubusercontent.com/31126424/119185348-f7216400-ba76-11eb-83b6-edf6024dc784.png)
+
+    GoThink: v1.0.0
+    CPU: 4 × Intel® Core™ i3-3217U CPU @ 1.80GHz
+    Operating System: Manjaro Linux
+    KDE Plasma Version: 5.21.4
+    KDE Frameworks Version: 5.81.0
+    Qt Version: 5.15.2
+    Kernel Version: 5.10.34-1-MANJARO
+    OS Type: 64-bit
 
 # FAQ
 
