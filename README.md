@@ -1,5 +1,5 @@
 # About GoThink
-GoThink is a RethinkDB backup tool, whick allows you to back up all or preselected data and restore them.
+GoThink is a RethinkDB backup tool, which allows you to back up all or preselected data and restore them.
 
 This application was built with a focus on speed, friendliness and functionality.
 
