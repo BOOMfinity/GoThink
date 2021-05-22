@@ -85,7 +85,9 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 		barPool    = InitBars(bar1, bar2)
 		now        = time.Now()
 		tempDir, _ = ioutil.TempDir(os.TempDir(), "gothink.export.*")
+		l          = make([]byte, 4)
 	)
+	buff.Grow(31457280)
 	barPool.Start()
 	for _, db := range dbs {
 		bar1.Increment()
@@ -108,7 +110,6 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 			chunkID := 0
 			err = ForEachTables(DB, db, table, func(data []byte) error {
 				rows++
-				var l = make([]byte, 4)
 				binary.BigEndian.PutUint32(l[0:4], uint32(len(data)))
 				buff.Write(l)
 				buff.Write(data)
