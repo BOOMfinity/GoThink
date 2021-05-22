@@ -18,7 +18,6 @@ import (
 	"github.com/BOOMfinity-Developers/GoThink/pkg"
 	"github.com/cheggaaa/pb"
 	"github.com/klauspost/pgzip"
-	"github.com/segmentio/encoding/json"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
@@ -107,14 +106,13 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 			bar2.Increment()
 			buff.Reset()
 			chunkID := 0
-			err = ForEachTables(DB, db, table, func(data interface{}) error {
+			err = ForEachTables(DB, db, table, func(data []byte) error {
 				rows++
-				dataJ, _ := json.Marshal(data)
 				var l = make([]byte, 4)
-				binary.BigEndian.PutUint32(l[0:4], uint32(len(dataJ)))
+				binary.BigEndian.PutUint32(l[0:4], uint32(len(data)))
 				buff.Write(l)
-				buff.Write(dataJ)
-				totalSize += uint64(len(dataJ))
+				buff.Write(data)
+				totalSize += uint64(len(data))
 				totalDocuments++
 				if buff.Len() >= /*5242880*/ 26214400 { // 25MiB
 					if err := writeFile(tempDir, db, table, chunkID, buff); err != nil {
@@ -156,7 +154,6 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 
 	bar1.Prefix("Waiting...")
 	bar2.Prefix("Waiting...")
-
 	if err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0755); err != nil {
 		return err
 	}
@@ -223,20 +220,18 @@ func writeFile(temp, db, table string, chunk int, buff *bytes.Buffer) error {
 	return err
 }
 
-func forEachTablesReusable(DB *rethinkdb.Session, db, table string, msgs chan interface{}, run func(data interface{}) error) error {
+func ForEachTables(DB *rethinkdb.Session, db, table string, run func(data []byte) error) error {
 	cursor, _ := rethinkdb.DB(db).Table(table, rethinkdb.TableOpts{ReadMode: "outdated"}).Run(DB)
-	cursor.Listen(msgs)
-	for data := range msgs {
+	for {
+		data, ok := cursor.NextResponse()
+		if !ok {
+			break
+		}
 		if err := run(data); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func ForEachTables(DB *rethinkdb.Session, db, table string, run func(data interface{}) error) error {
-	msgs := make(chan interface{})
-	return forEachTablesReusable(DB, db, table, msgs, run)
 }
 
 func ParseExportPath(db *rethinkdb.Session, path string) (ex pkg.ToExport, err error) {

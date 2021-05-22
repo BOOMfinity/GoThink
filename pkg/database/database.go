@@ -56,9 +56,10 @@ func CreateConnection(host, password, passwordFile string, port uint) (*rethinkd
 	println()
 	log.Println("Connecting...")
 	session, err := rethinkdb.Connect(rethinkdb.ConnectOpts{
-		Password: password,
-		Address:  fmt.Sprintf("%v:%v", host, port),
-		Username: "admin",
+		Password:      password,
+		Address:       fmt.Sprintf("%v:%v", host, port),
+		UseJSONNumber: true,
+		Username:      "admin",
 	})
 	if err != nil {
 		return nil, err
