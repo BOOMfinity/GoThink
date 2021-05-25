@@ -2,12 +2,9 @@ package _import
 
 import (
 	"archive/tar"
-	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -25,40 +22,25 @@ func RunFromCLI(ctx *cli.Context) error {
 
 func Run(DB *rethinkdb.Session, filePath, importPath string) error {
 	var (
-		workers   = newWorkerPool()
-		dst, _    = ioutil.TempDir(os.TempDir(), "gothink.import.*")
-		start     = time.Now()
-		data      = ParseImportPath(importPath)
-		importP   string
-		databases []string
+		workers = newWorkerPool()
+		start   = time.Now()
+		data    = ParseImportPath(importPath)
 	)
+
 	workers.Spawn(0)
-	if data.Database != "" {
-		importP = filepath.Join(data.Database, data.Table)
-	}
-	if err := UnzipFile(filePath, dst, importP); err != nil {
+	if err := ImportFile(filePath, DB, workers, data); err != nil {
 		return err
-	}
-	rethinkdb.DBList().ReadAll(&databases, DB)
-	dbs, _ := os.ReadDir(dst)
-	for _, db := range dbs {
-		im := NewDatabaseImport(db.Name(), DB, workers, databases)
-		im.SetDestination(dst)
-		if err := im.Run(); err != nil {
-			return err
-		}
 	}
 
 	println()
 	log.Printf("Imported in %v", time.Now().Sub(start).String())
 	println()
 
-	os.RemoveAll(dst)
 	return nil
 }
 
-func UnzipFile(filePath string, dst string, importPath string) error {
-	found := false
+// ImportFile streams data from backup file and processes it without fully unpacking to temp directories
+func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, toImport pkg.ToExport) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -67,9 +49,9 @@ func UnzipFile(filePath string, dst string, importPath string) error {
 	decoder, _ := gzip.NewReader(file)
 	reader := tar.NewReader(decoder)
 	var ver *version.Version
+	var currentImport *databaseImport
 	for {
 		header, err := reader.Next()
-
 		if err == io.EOF {
 			break
 		}
@@ -88,35 +70,48 @@ func UnzipFile(filePath string, dst string, importPath string) error {
 			}
 			continue
 		}
-		if !strings.HasPrefix(header.Name, importPath) {
+
+		if header.Typeflag != tar.TypeReg {
 			continue
 		}
-		found = true
-		target := filepath.Join(dst, header.Name)
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
-					panic(err)
-				}
+
+		data := parseTarFilePath(header.Name)
+		if currentImport == nil || currentImport.name != data.database { // if current import struct cannot be used for this database
+			if toImport.Database != "" && toImport.Database != data.database { // if user specified one database to export
+				continue
+			} else {
+				currentImport = NewDatabaseImport(data.database, conn, workers)
 			}
-		case tar.TypeReg:
-			f, err := os.Create(target)
-			if err != nil {
-				panic(err)
-			}
-			if _, err := io.Copy(f, reader); err != nil {
-				panic(err)
-			}
-			f.Close()
 		}
-	}
-	if !found {
-		return errors.New("Database or table not found. Check that the -i flag is set correctly.")
+
+		switch data.typ {
+		case FileInfo:
+			if toImport.Table != "" && toImport.Table != data.table {
+				break
+			}
+			err := currentImport.importTableInfo(data.table, reader)
+			if err != nil {
+				println("Failure during importing table info - backup file may be corrupted or versions mismatched.")
+				panic(err)
+			}
+			break
+		case FileChunk:
+			println(toImport.Table, data.table)
+			if toImport.Table != "" && toImport.Table != data.table {
+				break
+			}
+			err := currentImport.importTableChunk(data.table, reader, data.chunkID)
+			if err != nil {
+				println("Failure during importing table chunk - backup file may be corrupted or versions mismatched.")
+				panic(err)
+			}
+			break
+		}
 	}
 	return nil
 }
 
+// ParseImportPath parses selection of importable data from -i flag
 func ParseImportPath(path string) (res pkg.ToExport) {
 	if path == "" {
 		log.Println("Import path not specified. Importing all data.")
@@ -129,4 +124,40 @@ func ParseImportPath(path string) (res pkg.ToExport) {
 	}
 	res.Database = str[0]
 	return
+}
+
+// TarFileInfo represents information about data in current file in tar archive
+type TarFileInfo struct {
+	database string
+	table    string
+	typ      TarFileType
+	chunkID  string // if typ == FileChunk
+}
+
+type TarFileType uint8
+
+const (
+	FileChunk = 0
+	FileInfo  = 1
+)
+
+// parseTarFilePath extracts TarFileInfo from path of file in tar archive
+func parseTarFilePath(path string) *TarFileInfo {
+	parts := strings.Split(path, "/")
+	if len(parts) < 3 {
+		return nil
+	}
+	fi := &TarFileInfo{database: parts[0], table: parts[1]}
+	switch {
+	case strings.HasPrefix(parts[2], ".info"):
+		fi.typ = FileInfo
+		break
+	case strings.HasPrefix(parts[2], "chunk"):
+		fi.typ = FileChunk
+		fi.chunkID = parts[2][6 : len(parts[2])-5]
+		break
+	default:
+		return nil
+	}
+	return fi
 }

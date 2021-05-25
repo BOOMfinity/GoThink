@@ -3,7 +3,7 @@ GoThink is a RethinkDB backup tool, which allows you to back up all or preselect
 
 This application was built with a focus on speed, friendliness and functionality.
 
-In the future we would like to add support for backups from the python driver, server migration (copy command) and 2-3 compression methods to choose from.
+In the future we want to add support for importing backups created with python driver, server migration (copy command) and more compression methods to choose from.
 
 # Installation
 
@@ -17,7 +17,7 @@ If it is not, add `export PATH=$PATH:$HOME/go/bin` to `$HOME/.bashrc` (for bash)
 - Method 2 - download binary from release page
   - Download binary from "releases" page. Choose from multiple OSs and archs.
 
-For now, precompiled binaries are available for Windows (amd64), Linux (amd64).
+For now, precompiled binaries are available for Windows (amd64) and Linux (amd64).
 
 # Usage
 
@@ -46,4 +46,4 @@ Just create the issue and describe your request. We will look at it.
 
 ### Can I create a PR?
 
-Of course, you can. We will check it and decide what to do.
+Of course, you can. We will check it and decide what to do. However if you're going to do something big, create an issue first to make sure no one else is already doing same thing.

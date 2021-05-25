@@ -146,7 +146,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 				TotalDocuments: totalDocuments,
 				TotalSize:      totalSize,
 			}
-			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/info.json", db, table)), info.ToJSON(), 0755)
+			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0755)
 			if err != nil {
 				panic(err)
 			}
