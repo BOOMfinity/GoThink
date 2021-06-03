@@ -79,6 +79,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	log.Printf("Exporting %v databases (%v tables)...", len(dbs), tableMap.TotalCount())
 	println()
 	bar1.SetTotal(len(dbs))
+
 	var (
 		buff       = new(bytes.Buffer)
 		rows       = 0
@@ -101,7 +102,11 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 				totalSize      = uint64(0)
 				totalDocuments = uint64(0)
 			)
-			os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0755)
+
+			err := os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0700)
+			if err != nil {
+				return err
+			}
 			var tableInfo map[string]interface{}
 			rethinkdb.DB(db).Table(table).Info().ReadOne(&tableInfo, DB)
 			bar2.Prefix(fmt.Sprintf("Table '%v'", table))
@@ -146,7 +151,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 				TotalDocuments: totalDocuments,
 				TotalSize:      totalSize,
 			}
-			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0755)
+			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0700)
 			if err != nil {
 				panic(err)
 			}
@@ -155,15 +160,15 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 
 	bar1.Prefix("Waiting...")
 	bar2.Prefix("Waiting...")
-	if err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0755); err != nil {
+	if err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0700); err != nil {
 		return err
 	}
 
 	// Zipping
 	bar1.Set(0)
 	bar2.Set(0)
-	os.MkdirAll(filepath.Dir(outputPath), 0755)
-	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
+	os.MkdirAll(filepath.Dir(outputPath), 0700)
+	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +192,10 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	tWriter.Close()
 	zWriter.Close()
 	file.Close()
-	os.RemoveAll(tempDir)
+	err = os.RemoveAll(tempDir)
+	if err != nil {
+		log.Printf("Temp dir has not been removed due to error: %v\nPlease do it yourself. (%v)", err.Error(), tempDir)
+	}
 	bar1.Prefix("Finished!")
 	bar2.Prefix("Finished!")
 	barPool.Stop()
@@ -217,7 +225,7 @@ func check(path string, tW *tar.Writer, fixedPath string) {
 }
 
 func writeFile(temp, db, table string, chunk int, buff *bytes.Buffer) error {
-	err := os.WriteFile(filepath.Join(temp, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunk)), buff.Bytes(), 0755)
+	err := os.WriteFile(filepath.Join(temp, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunk)), buff.Bytes(), 0700)
 	return err
 }
 

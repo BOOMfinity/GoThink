@@ -10,10 +10,10 @@ type ToExport struct {
 	All      bool
 }
 
-type TableDumpResult struct {
+/*type TableDumpResult struct {
 	totalSize      uint64
 	totalDocuments uint64
-}
+}*/
 
 type TableList map[string][]string
 

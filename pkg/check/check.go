@@ -15,7 +15,7 @@ func RunFromCLI(ctx *cli.Context) error {
 	return Run(ctx.Context.Value("database").(*rethinkdb.Session), ctx.Context.Value("database-b").(*rethinkdb.Session), ctx.String("database"))
 }
 
-func Run(srcDB *rethinkdb.Session, targetDB *rethinkdb.Session, toCheck string) error {
+func Run(srcDB, targetDB *rethinkdb.Session, toCheck string) error {
 	checkAll := toCheck == ""
 	var (
 		dbs     GoThink.PowerfulStringSlice
@@ -78,7 +78,7 @@ func Run(srcDB *rethinkdb.Session, targetDB *rethinkdb.Session, toCheck string) 
 			}
 		}
 	}
-	end := time.Now().Sub(now)
+	end := time.Since(now)
 	ok := summary.totalDocuments - summary.errors - summary.missingDocuments - summary.mismatchedDocuments
 	println()
 	fmt.Printf("All checked documents (from source server): %v\n", summary.totalDocuments)

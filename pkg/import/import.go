@@ -33,7 +33,7 @@ func Run(DB *rethinkdb.Session, filePath, importPath string) error {
 	}
 
 	println()
-	log.Printf("Imported in %v", time.Now().Sub(start).String())
+	log.Printf("Imported in %v", time.Since(start).String())
 	println()
 
 	return nil
@@ -94,9 +94,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 				println("Failure during importing table info - backup file may be corrupted or versions mismatched.")
 				panic(err)
 			}
-			break
 		case FileChunk:
-			println(toImport.Table, data.table)
 			if toImport.Table != "" && toImport.Table != data.table {
 				break
 			}
@@ -105,7 +103,6 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 				println("Failure during importing table chunk - backup file may be corrupted or versions mismatched.")
 				panic(err)
 			}
-			break
 		}
 	}
 	return nil
@@ -151,11 +148,9 @@ func parseTarFilePath(path string) *TarFileInfo {
 	switch {
 	case strings.HasPrefix(parts[2], ".info"):
 		fi.typ = FileInfo
-		break
 	case strings.HasPrefix(parts[2], "chunk"):
 		fi.typ = FileChunk
 		fi.chunkID = parts[2][6 : len(parts[2])-5]
-		break
 	default:
 		return nil
 	}

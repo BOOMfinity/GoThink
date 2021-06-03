@@ -8,7 +8,6 @@ import (
 	"github.com/segmentio/encoding/json"
 	"io"
 	"log"
-	"reflect"
 	"unsafe"
 
 	"github.com/BOOMfinity-Developers/GoThink/pkg"
@@ -127,18 +126,16 @@ func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader, id str
 		}
 
 		// Read JSON document and prepare for inserting
-		d := make([]byte, lu)
-		_, err = io.ReadFull(chunk, d)
+		jsonBytes := make([]byte, lu)
+		_, err = io.ReadFull(chunk, jsonBytes)
 		if err != nil {
 			if err != io.EOF {
 				return err
 			}
 			break
 		}
-		// no-copy []byte -> string conversion
-		sliceHeader := (*reflect.SliceHeader)(unsafe.Pointer(&d))
-		stringHeader := reflect.StringHeader{Data: sliceHeader.Data, Len: sliceHeader.Len}
-		toInsert = append(toInsert, r.JSON(*(*string)(unsafe.Pointer(&stringHeader))))
+
+		toInsert = append(toInsert, r.JSON(bytesToString(jsonBytes)))
 	}
 
 	// Insert data in chunks of 250 elements in parallel using workers
@@ -182,4 +179,9 @@ func checkDatabase(dbs []string, name string) bool {
 		}
 	}
 	return false
+}
+
+// no-copy []byte -> string conversion. If you know better way to do this, feel free to tell us.
+func bytesToString(bytes []byte) (s string) {
+	return *(*string)(unsafe.Pointer(&bytes))
 }
