@@ -10,10 +10,15 @@ import (
 
 	"github.com/BOOMfinity-Developers/GoThink"
 	"github.com/BOOMfinity-Developers/GoThink/pkg"
+	"github.com/cheggaaa/pb"
 	"github.com/hashicorp/go-version"
 	"github.com/klauspost/compress/gzip"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/rethinkdb/rethinkdb-go.v6"
+)
+
+var (
+	bar1 = pb.New(0).SetMaxWidth(100)
 )
 
 func RunFromCLI(ctx *cli.Context) error {
@@ -26,6 +31,10 @@ func Run(DB *rethinkdb.Session, filePath, importPath string) error {
 		start   = time.Now()
 		data    = ParseImportPath(importPath)
 	)
+	bar1.SetUnits(pb.U_BYTES)
+	bar1.ShowTimeLeft = false
+	bar1.Prefix("Waiting ")
+	bar1.Start()
 
 	workers.Spawn(0)
 	if err := ImportFile(filePath, DB, workers, data); err != nil {
@@ -66,6 +75,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 			data, _ := io.ReadAll(reader)
 			ver, _ = version.NewVersion(string(data))
 			if !GoThink.Supported.Check(ver) {
+				bar1.Finish()
 				log.Fatalf("This version of GoThink (%v) does NOT support backups from GoThink v%v. To continue, please download the older version that supports this backup.", GoThink.Version, ver.String())
 			}
 			continue

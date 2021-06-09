@@ -5,10 +5,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"github.com/segmentio/encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"unsafe"
+
+	"github.com/segmentio/encoding/json"
 
 	"github.com/BOOMfinity-Developers/GoThink/pkg"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
@@ -45,14 +46,12 @@ func (i *databaseImport) SetDestination(path string) {
 
 // prepare prepares rethink for importing data from tables
 func (i *databaseImport) prepare() error {
-	println("Importing ", i.name, " database")
 	var databases []string
 	err := r.DBList().ReadAll(&databases, i.conn)
 	if err != nil {
 		return err
 	}
 	if !checkDatabase(i.databases, i.name) {
-		log.Printf("Creating '%v'...", i.name)
 		r.DBCreate(i.name).Run(i.conn)
 	}
 	err = r.DB(i.name).TableList().ReadAll(&i.tables, i.conn)
@@ -83,7 +82,6 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
 	}
 
 	if !i.tableExist(name) {
-		log.Printf("Creating table '%v' in '%v'...", name, i.name)
 		r.DB(i.name).TableCreate(name, r.TableCreateOpts{
 			PrimaryKey: tableInfo.PrimaryKey,
 		}).Run(i.conn)
@@ -92,7 +90,6 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
 		}).Run(i.conn)
 	}
 
-	log.Printf("Importing indexes of %v...", name)
 	for _, index := range tableInfo.Indexes {
 		_, _ = r.DB(i.name).Table(name).IndexCreateFunc(index.Index, index.Function, r.IndexCreateOpts{
 			Geo:   index.Geo,
@@ -100,7 +97,8 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
 		}).Run(i.conn)
 	}
 	r.DB(i.name).Table(name).IndexWait().Run(i.conn)
-
+	bar1.SetTotal(int(tableInfo.TotalSize))
+	bar1.Set(0)
 	// TODO: Write hook import
 	//if tableInfo.WriteHook != nil {
 	//	_, _ = r.DB(i.name).Table(name).SetWriteHook(tableInfo.WriteHook.Function).Run(i.conn)
@@ -112,8 +110,30 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
 var lu uint32
 var l [4]byte
 
+type insertDataSlice []insertData
+
+func (i insertDataSlice) GetTerms() (p []interface{}) {
+	for index, _ := range i {
+		p = append(p, i[index].val)
+	}
+	return
+}
+
+func (i insertDataSlice) GetSize() (p int) {
+	for index, _ := range i {
+		p += i[index].size
+	}
+	return
+}
+
+type insertData struct {
+	size int
+	val  r.Term
+}
+
 func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader, id string) error {
-	var toInsert []interface{}
+	bar1.Prefix(fmt.Sprintf("%v.%v ", i.name, name))
+	var toInsert insertDataSlice
 	for {
 		// Read uint32 - length of next document
 		_, err := io.ReadFull(chunk, l[:])
@@ -134,31 +154,31 @@ func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader, id str
 			}
 			break
 		}
-
-		toInsert = append(toInsert, r.JSON(bytesToString(jsonBytes)))
+		toInsert = append(toInsert, insertData{size: len(jsonBytes), val: r.JSON(bytesToString(jsonBytes))})
 	}
 
 	// Insert data in chunks of 250 elements in parallel using workers
 	for _, dta := range chunkSlice(toInsert, 250) {
 		i.workers.AddJob(func(x interface{}) {
-			_, err := r.DB(i.name).Table(name).Insert(x.([]interface{})).Run(i.conn)
+			p := x.(insertDataSlice)
+			_, err := r.DB(i.name).Table(name).Insert(p.GetTerms()).Run(i.conn)
 			if err != nil {
 				panic(err)
 			}
+			bar1.Add(p.GetSize())
 		}, dta)
 	}
 	i.workers.Wait()
 
-	log.Printf("Finished importing chunk %v-#%v\n", name, id)
 	return nil
 }
 
 // chunkSlice splits array into chunks of given length
-func chunkSlice(xs []interface{}, chunkSize int) [][]interface{} {
+func chunkSlice(xs insertDataSlice, chunkSize int) []insertDataSlice {
 	if len(xs) == 0 {
 		return nil
 	}
-	divided := make([][]interface{}, (len(xs)+chunkSize-1)/chunkSize)
+	divided := make([]insertDataSlice, (len(xs)+chunkSize-1)/chunkSize)
 	prev := 0
 	i := 0
 	till := len(xs) - chunkSize
