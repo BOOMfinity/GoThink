@@ -113,14 +113,14 @@ var l [4]byte
 type insertDataSlice []insertData
 
 func (i insertDataSlice) GetTerms() (p []interface{}) {
-	for index, _ := range i {
+	for index := range i {
 		p = append(p, i[index].val)
 	}
 	return
 }
 
 func (i insertDataSlice) GetSize() (p int) {
-	for index, _ := range i {
+	for index := range i {
 		p += i[index].size
 	}
 	return
