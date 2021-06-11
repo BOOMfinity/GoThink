@@ -131,7 +131,7 @@ type insertData struct {
 	val  r.Term
 }
 
-func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader, id string) error {
+func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader) error {
 	bar1.Prefix(fmt.Sprintf("%v.%v ", i.name, name))
 	var toInsert insertDataSlice
 	for {

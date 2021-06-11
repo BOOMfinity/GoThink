@@ -108,7 +108,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 			if toImport.Table != "" && toImport.Table != data.table {
 				break
 			}
-			err := currentImport.importTableChunk(data.table, reader, data.chunkID)
+			err := currentImport.importTableChunk(data.table, reader)
 			if err != nil {
 				println("Failure during importing table chunk - backup file may be corrupted or versions mismatched.")
 				panic(err)
