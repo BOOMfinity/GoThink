@@ -90,6 +90,16 @@ func main() {
 						Usage:   "Path to the backup file",
 						Value:   "backup.tar.gz",
 					},
+					&cli.Uint64Flag{
+						Name:  "replicas",
+						Usage: "Number of replicas to setup on created table",
+						Value: 1,
+					},
+					&cli.Uint64Flag{
+						Name:  "shards",
+						Usage: "Number of shards to setup on created table",
+						Value: 1,
+					},
 				}...),
 				Action: func(context *cli.Context) error {
 					return database.CLIMiddleware(context, _import.RunFromCLI)

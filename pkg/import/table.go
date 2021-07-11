@@ -70,7 +70,7 @@ func (i *databaseImport) tableExist(name string) bool {
 	return false
 }
 
-func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
+func (i *databaseImport) importTableInfo(name string, info *tar.Reader, shards, replicas uint64) error {
 	tableInfo := pkg.TableInfo{}
 	jsonBytes, err := io.ReadAll(info)
 	if err != nil {
@@ -82,9 +82,14 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader) error {
 	}
 
 	if !i.tableExist(name) {
-		r.DB(i.name).TableCreate(name, r.TableCreateOpts{
+		_, err := r.DB(i.name).TableCreate(name, r.TableCreateOpts{
 			PrimaryKey: tableInfo.PrimaryKey,
+			Replicas:   replicas,
+			Shards:     shards,
 		}).Run(i.conn)
+		if err != nil {
+			return err
+		}
 		r.DB(i.name).Table(name).Wait(r.WaitOpts{
 			WaitFor: name,
 		}).Run(i.conn)

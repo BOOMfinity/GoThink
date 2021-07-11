@@ -22,10 +22,10 @@ var (
 )
 
 func RunFromCLI(ctx *cli.Context) error {
-	return Run(ctx.Context.Value("database").(*rethinkdb.Session), ctx.String("file"), ctx.String("import-path"))
+	return Run(ctx.Context.Value("database").(*rethinkdb.Session), ctx.String("file"), ctx.String("import-path"), ctx.Uint64("shards"), ctx.Uint64("replicas"))
 }
 
-func Run(DB *rethinkdb.Session, filePath, importPath string) error {
+func Run(DB *rethinkdb.Session, filePath, importPath string, shards, replicas uint64) error {
 	var (
 		workers = newWorkerPool()
 		start   = time.Now()
@@ -37,7 +37,7 @@ func Run(DB *rethinkdb.Session, filePath, importPath string) error {
 	bar1.Start()
 
 	workers.Spawn(0)
-	if err := ImportFile(filePath, DB, workers, data); err != nil {
+	if err := ImportFile(filePath, DB, workers, data, shards, replicas); err != nil {
 		return err
 	}
 
@@ -49,7 +49,7 @@ func Run(DB *rethinkdb.Session, filePath, importPath string) error {
 }
 
 // ImportFile streams data from backup file and processes it without fully unpacking to temp directories
-func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, toImport pkg.ToExport) error {
+func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, toImport pkg.ToExport, shards, replicas uint64) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -99,7 +99,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 			if toImport.Table != "" && toImport.Table != data.table {
 				break
 			}
-			err := currentImport.importTableInfo(data.table, reader)
+			err := currentImport.importTableInfo(data.table, reader, shards, replicas)
 			if err != nil {
 				println("Failure during importing table info - backup file may be corrupted or versions mismatched.")
 				panic(err)
