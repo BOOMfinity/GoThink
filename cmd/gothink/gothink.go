@@ -53,7 +53,7 @@ func main() {
 			},
 			{
 				Name:        "export",
-				Aliases:     []string{"e"},
+				Aliases:     []string{"e", "dump"},
 				Usage:       "Exports documents from RethinkDB",
 				Description: "It allows you to dump all or selected data",
 				Flags: append(globalFlags, []cli.Flag{
@@ -75,7 +75,7 @@ func main() {
 			},
 			{
 				Name:        "import",
-				Aliases:     []string{"i"},
+				Aliases:     []string{"i", "restore"},
 				Usage:       "Restores data from backup",
 				Description: "It allows you to restore a backup. At the moment, GoThink only supports its own backups. BACKUPS FROM OTHER DRIVERS ARE NOT YET SUPPORTED!\nNote: This version of GoThink only supports backups from GoThink " + GoThink.Supported.String(),
 				Flags: append(globalFlags, []cli.Flag{
