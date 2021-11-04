@@ -2,17 +2,22 @@ all:
 	rm -rf ./build/*
 	make windows
 	make linux
+	make osx
 
 upx:
 	make all
 	upx ./build/gothink
 	upx ./build/gothink.exe
+	upx ./build/gothink.osx
 
 windows:
 	GOOS=windows go build -ldflags="-s -w" -o="build/gothink.exe" ./cmd/gothink/gothink.go
 
 linux:
 	GOOS=linux go build -ldflags="-s -w" -o="build/gothink" ./cmd/gothink/gothink.go
+
+osx:
+	GOOS=darwin go build -ldflags="-s -w" -o="build/gothink.osx" ./cmd/gothink/gothink.go
 
 LOGS=/dev/null
 
