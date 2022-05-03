@@ -100,6 +100,12 @@ func main() {
 						Usage: "Number of shards to setup on created table",
 						Value: 1,
 					},
+					&cli.BoolFlag{
+						Name:    "disable-write-hooks",
+						Aliases: []string{"dwh"},
+						Usage:   "Disable write hooks import",
+						Value:   false,
+					},
 				}...),
 				Action: func(context *cli.Context) error {
 					return database.CLIMiddleware(context, _import.RunFromCLI)

@@ -140,10 +140,10 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 			// Secondary indexes
 			var (
 				allIndexes []pkg.TableIndex
-				whook      *pkg.TableWriteHook
+				whook      *rethinkdb.WriteHookInfo
 			)
 			rethinkdb.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, DB, rethinkdb.RunOpts{BinaryFormat: "raw"})
-			rethinkdb.DB(db).Table(table).GetWriteHook().ReadOne(&whook, DB, rethinkdb.RunOpts{BinaryFormat: "raw"})
+			rethinkdb.DB(db).Table(table).GetWriteHook().ReadOne(&whook, DB)
 			info := pkg.TableInfo{
 				PrimaryKey:     tableInfo["primary_key"].(string),
 				Indexes:        allIndexes,

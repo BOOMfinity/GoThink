@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -16,21 +17,23 @@ import (
 )
 
 type databaseImport struct {
-	name      string
-	conn      *r.Session
-	tables    []string
-	databases []string
-	reader    *bufio.Reader
-	workers   *workerPool
-	dst       string
+	name          string
+	conn          *r.Session
+	tables        []string
+	databases     []string
+	reader        *bufio.Reader
+	workers       *workerPool
+	dst           string
+	hooksDisabled bool
 }
 
 func NewDatabaseImport(name string, conn *r.Session, pool *workerPool) *databaseImport {
 	di := databaseImport{
-		name:    name,
-		conn:    conn,
-		workers: pool,
-		reader:  bufio.NewReader(bytes.NewBuffer(nil)),
+		name:          name,
+		conn:          conn,
+		workers:       pool,
+		reader:        bufio.NewReader(bytes.NewBuffer(nil)),
+		hooksDisabled: false,
 	}
 	err := di.prepare()
 	if err != nil {
@@ -44,7 +47,7 @@ func (i *databaseImport) SetDestination(path string) {
 	i.dst = path
 }
 
-// prepare prepares rethink for importing data from tables
+// prepare rethink for importing data from tables
 func (i *databaseImport) prepare() error {
 	var databases []string
 	err := r.DBList().ReadAll(&databases, i.conn)
@@ -104,10 +107,18 @@ func (i *databaseImport) importTableInfo(name string, info *tar.Reader, shards, 
 	r.DB(i.name).Table(name).IndexWait().Run(i.conn)
 	bar1.SetTotal(int(tableInfo.TotalSize))
 	bar1.Set(0)
-	// TODO: Write hook import
-	//if tableInfo.WriteHook != nil {
-	//	_, _ = r.DB(i.name).Table(name).SetWriteHook(tableInfo.WriteHook.Function).Run(i.conn)
-	//}
+
+	if tableInfo.WriteHook != nil && !i.hooksDisabled {
+		/*
+			Couldn't find any better way lol.
+
+			From ql2.proto:
+			SET_WRITE_HOOK = 189
+			DB = 14;
+			TABLE = 15;
+		*/
+		_, _ = r.RawQuery(json.RawMessage(fmt.Sprintf("[189,[[15,[[14,[\"%v\"]],\"%v\"]],{\"$reql_type$\":\"BINARY\",\"data\":\"%v\"}]]", i.name, name, base64.StdEncoding.EncodeToString(tableInfo.WriteHook.Function)))).Run(i.conn)
+	}
 
 	return nil
 }

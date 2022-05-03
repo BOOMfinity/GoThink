@@ -22,10 +22,10 @@ var (
 )
 
 func RunFromCLI(ctx *cli.Context) error {
-	return Run(ctx.Context.Value("database").(*rethinkdb.Session), ctx.String("file"), ctx.String("import-path"), ctx.Uint64("shards"), ctx.Uint64("replicas"))
+	return Run(ctx.Context.Value("database").(*rethinkdb.Session), ctx.String("file"), ctx.String("import-path"), ctx.Uint64("shards"), ctx.Uint64("replicas"), ctx.Bool("disable-write-hooks"))
 }
 
-func Run(DB *rethinkdb.Session, filePath, importPath string, shards, replicas uint64) error {
+func Run(DB *rethinkdb.Session, filePath, importPath string, shards, replicas uint64, disableHooks bool) error {
 	var (
 		workers = newWorkerPool()
 		start   = time.Now()
@@ -37,7 +37,7 @@ func Run(DB *rethinkdb.Session, filePath, importPath string, shards, replicas ui
 	bar1.Start()
 
 	workers.Spawn(0)
-	if err := ImportFile(filePath, DB, workers, data, shards, replicas); err != nil {
+	if err := ImportFile(filePath, DB, workers, data, shards, replicas, disableHooks); err != nil {
 		return err
 	}
 
@@ -49,7 +49,7 @@ func Run(DB *rethinkdb.Session, filePath, importPath string, shards, replicas ui
 }
 
 // ImportFile streams data from backup file and processes it without fully unpacking to temp directories
-func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, toImport pkg.ToExport, shards, replicas uint64) error {
+func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, toImport pkg.ToExport, shards, replicas uint64, disableHooks bool) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -91,6 +91,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 				continue
 			} else {
 				currentImport = NewDatabaseImport(data.database, conn, workers)
+				currentImport.hooksDisabled = disableHooks
 			}
 		}
 

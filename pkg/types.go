@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"github.com/segmentio/encoding/json"
+	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 type ToExport struct {
@@ -36,11 +37,11 @@ type TableWriteHook struct {
 }
 
 type TableInfo struct {
-	PrimaryKey     string          `json:"primary_key"`
-	Indexes        []TableIndex    `json:"indexes"`
-	WriteHook      *TableWriteHook `json:"write_hooks"`
-	TotalDocuments uint64          `json:"total_documents"`
-	TotalSize      uint64          `json:"total_size"`
+	PrimaryKey     string                   `json:"primary_key"`
+	Indexes        []TableIndex             `json:"indexes"`
+	WriteHook      *rethinkdb.WriteHookInfo `json:"write_hooks"`
+	TotalDocuments uint64                   `json:"total_documents"`
+	TotalSize      uint64                   `json:"total_size"`
 }
 
 func (ti TableInfo) ToJSON() (res []byte) {
