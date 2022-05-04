@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -85,7 +84,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 		rows       = 0
 		barPool    = InitBars(bar1, bar2)
 		now        = time.Now()
-		tempDir, _ = ioutil.TempDir(os.TempDir(), "gothink.export.*")
+		tempDir, _ = os.MkdirTemp(os.TempDir(), "gothink.export.*")
 		l          = make([]byte, 4)
 	)
 	buff.Grow(31457280)
@@ -151,7 +150,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 				TotalDocuments: totalDocuments,
 				TotalSize:      totalSize,
 			}
-			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0700)
+			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0600)
 			if err != nil {
 				panic(err)
 			}
@@ -160,7 +159,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 
 	bar1.Prefix("Waiting...")
 	bar2.Prefix("Waiting...")
-	if err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0700); err != nil {
+	if err = os.WriteFile(filepath.Join(tempDir, ".version"), []byte(GoThink.Version), 0600); err != nil {
 		return err
 	}
 
@@ -168,7 +167,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	bar1.Set(0)
 	bar2.Set(0)
 	os.MkdirAll(filepath.Dir(outputPath), 0700)
-	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0700)
+	file, err := os.OpenFile(outputPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -225,7 +224,7 @@ func check(path string, tW *tar.Writer, fixedPath string) {
 }
 
 func writeFile(temp, db, table string, chunk int, buff *bytes.Buffer) error {
-	err := os.WriteFile(filepath.Join(temp, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunk)), buff.Bytes(), 0700)
+	err := os.WriteFile(filepath.Join(temp, fmt.Sprintf("%v/%v/chunk-%v.json", db, table, chunk)), buff.Bytes(), 0600)
 	return err
 }
 

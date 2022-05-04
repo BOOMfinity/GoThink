@@ -27,7 +27,7 @@ type databaseImport struct {
 	hooksDisabled bool
 }
 
-func NewDatabaseImport(name string, conn *r.Session, pool *workerPool) *databaseImport {
+func newDatabaseImport(name string, conn *r.Session, pool *workerPool) *databaseImport {
 	di := databaseImport{
 		name:          name,
 		conn:          conn,
@@ -217,7 +217,7 @@ func checkDatabase(dbs []string, name string) bool {
 	return false
 }
 
-// no-copy []byte -> string conversion. If you know better way to do this, feel free to tell us.
+// no-copy []byte -> string conversion.
 func bytesToString(bytes []byte) (s string) {
 	return *(*string)(unsafe.Pointer(&bytes))
 }

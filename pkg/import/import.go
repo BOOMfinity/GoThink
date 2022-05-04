@@ -76,6 +76,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 			ver, _ = version.NewVersion(string(data))
 			if !GoThink.Supported.Check(ver) {
 				bar1.Finish()
+				_ = file.Close()
 				log.Fatalf("This version of GoThink (%v) does NOT support backups from GoThink v%v. To continue, please download the older version that supports this backup.", GoThink.Version, ver.String())
 			}
 			continue
@@ -89,10 +90,9 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 		if currentImport == nil || currentImport.name != data.database { // if current import struct cannot be used for this database
 			if toImport.Database != "" && toImport.Database != data.database { // if user specified one database to export
 				continue
-			} else {
-				currentImport = NewDatabaseImport(data.database, conn, workers)
-				currentImport.hooksDisabled = disableHooks
 			}
+			currentImport = newDatabaseImport(data.database, conn, workers)
+			currentImport.hooksDisabled = disableHooks
 		}
 
 		switch data.typ {
