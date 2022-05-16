@@ -13,16 +13,18 @@ require (
 )
 
 require (
+	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
-	github.com/golang/protobuf v1.3.4 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
-	github.com/sirupsen/logrus v1.0.6 // indirect
-	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073 // indirect
-	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sys v0.0.0-20211110154304-99a53858aa08 // indirect
-	gopkg.in/cenkalti/backoff.v2 v2.2.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 )
+
+replace gopkg.in/rethinkdb/rethinkdb-go.v6 v6.2.1 => github.com/BOOMfinity-Developers/rethinkdb-go/v6 v6.2.2-0.20220509153636-c24b6ea38ec7

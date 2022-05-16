@@ -16,6 +16,9 @@ windows:
 linux:
 	GOOS=linux go build -ldflags="-s -w" -o="build/gothink" ./cmd/gothink/gothink.go
 
+linux-dev: #linux, but with debug symbols for profiling
+	GOOS=linux go build -o="build/gothink" ./cmd/gothink/gothink.go
+
 osx:
 	GOOS=darwin go build -ldflags="-s -w" -o="build/gothink.osx" ./cmd/gothink/gothink.go
 
