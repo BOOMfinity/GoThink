@@ -16,11 +16,11 @@ We will be happy if you use our tool instead of the official python driver :)
 # Installation
 
 ### Method 1 - download prebuilt binary
-  - Download the latest binary from [releases page](https://github.com/BOOMfinity-Developers/GoThink/releases). Choose from multiple OSs and architectures.
+  - Download the latest binary from [releases page](https://github.com/BOOMfinity/GoThink/releases). Choose from multiple OSs and architectures.
   
 ### Method 2 - build from source
   - Download the latest Golang version
-  - Run `go get github.com/BOOMfinity-Developers/GoThink/cmd/gothink` command.
+  - Run `go install github.com/BOOMfinity/GoThink/cmd/gothink@latest` command
 
 The binary will be installed automatically if Go bin directory is in the PATH.
 If it is not, add `export PATH=$PATH:$HOME/go/bin` to `$HOME/.bashrc` (for bash). If you are on Windows, well... ¯\_(ツ)_/¯.

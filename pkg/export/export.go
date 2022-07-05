@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BOOMfinity-Developers/GoThink"
-	"github.com/BOOMfinity-Developers/GoThink/pkg"
+	"github.com/BOOMfinity/GoThink"
+	"github.com/BOOMfinity/GoThink/pkg"
 	"github.com/cheggaaa/pb"
 	"github.com/klauspost/pgzip"
 	"github.com/urfave/cli/v2"

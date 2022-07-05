@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/BOOMfinity-Developers/GoThink"
-	"github.com/BOOMfinity-Developers/GoThink/pkg/check"
-	"github.com/BOOMfinity-Developers/GoThink/pkg/database"
-	"github.com/BOOMfinity-Developers/GoThink/pkg/export"
-	_import "github.com/BOOMfinity-Developers/GoThink/pkg/import"
+	"github.com/BOOMfinity/GoThink"
+	"github.com/BOOMfinity/GoThink/pkg/check"
+	"github.com/BOOMfinity/GoThink/pkg/database"
+	"github.com/BOOMfinity/GoThink/pkg/export"
+	_import "github.com/BOOMfinity/GoThink/pkg/import"
 	"github.com/urfave/cli/v2"
 )
 

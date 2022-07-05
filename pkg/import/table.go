@@ -12,7 +12,7 @@ import (
 
 	"github.com/segmentio/encoding/json"
 
-	"github.com/BOOMfinity-Developers/GoThink/pkg"
+	"github.com/BOOMfinity/GoThink/pkg"
 	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
@@ -147,6 +147,11 @@ type insertData struct {
 	val  r.Term
 }
 
+var insertOpts = r.InsertOpts{
+	IgnoreWriteHook: true,
+	ReturnChanges:   false,
+}
+
 func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader) error {
 	bar1.Prefix(fmt.Sprintf("%v.%v ", i.name, name))
 	var toInsert insertDataSlice
@@ -177,7 +182,7 @@ func (i *databaseImport) importTableChunk(name string, chunk *tar.Reader) error 
 	for _, dta := range chunkSlice(toInsert, 250) {
 		i.workers.AddJob(func(x interface{}) {
 			p := x.(insertDataSlice)
-			_, err := r.DB(i.name).Table(name).Insert(p.GetTerms()).Run(i.conn)
+			_, err := r.DB(i.name).Table(name).Insert(p.GetTerms(), insertOpts).Run(i.conn)
 			if err != nil {
 				panic(err)
 			}

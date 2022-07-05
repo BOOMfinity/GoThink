@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BOOMfinity-Developers/GoThink"
+	"github.com/BOOMfinity/GoThink"
 	"github.com/segmentio/encoding/json"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/rethinkdb/rethinkdb-go.v6"
