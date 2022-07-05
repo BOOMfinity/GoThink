@@ -31,19 +31,7 @@ If it is not, add `export PATH=$PATH:$HOME/go/bin` to `$HOME/.bashrc` (for bash)
 Run `gothink help` for information about available commands. It's pretty straightforward.
 
 # Benchmarks
-
-![image](https://i.imgur.com/UV5xIF8.png)
-
-    ~796k documents
-
-    GoThink: v1.0.1
-    CPU: 4 × Intel® Core™ i3-3217U CPU @ 1.80GHz
-    Operating System: Manjaro Linux
-    KDE Plasma Version: 5.21.4
-    KDE Frameworks Version: 5.81.0
-    Qt Version: 5.15.2
-    Kernel Version: 5.10.34-1-MANJARO
-    OS Type: 64-bit
+See: [benchmarks.md](https://github.com/BOOMfinity/GoThink/blob/master/benchmarks.md)
 
 # FAQ
 
