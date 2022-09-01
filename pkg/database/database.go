@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/VenomPCPL/rethinkdb-go"
+	"github.com/urfave/cli/v2"
 	"io"
 	"log"
 	"os"
 	"strings"
-
-	"github.com/urfave/cli/v2"
-	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 func CLIMiddleware(ctx *cli.Context, run cli.ActionFunc) error {

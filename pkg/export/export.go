@@ -6,10 +6,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/VenomPCPL/rethinkdb-go"
+	"github.com/alitto/pond"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/atomic"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -17,8 +22,6 @@ import (
 	"github.com/BOOMfinity/GoThink/pkg"
 	"github.com/cheggaaa/pb"
 	"github.com/klauspost/pgzip"
-	"github.com/urfave/cli/v2"
-	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 func RunFromCLI(ctx *cli.Context) error {
@@ -26,9 +29,14 @@ func RunFromCLI(ctx *cli.Context) error {
 }
 
 func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
+	tempDir, err := os.MkdirTemp(os.TempDir(), "gothink.export.*")
+	if err != nil {
+		return err
+	}
 	defer func() {
-		if err := recover(); err != nil {
-			panic(err)
+		if _err := recover(); _err != nil {
+			_ = os.RemoveAll(tempDir)
+			panic(_err)
 		}
 	}()
 	data, err := ParseExportPath(DB, exportPath)
@@ -80,14 +88,12 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	bar1.SetTotal(len(dbs))
 
 	var (
-		buff       = new(bytes.Buffer)
-		rows       = 0
-		barPool    = InitBars(bar1, bar2)
-		now        = time.Now()
-		tempDir, _ = os.MkdirTemp(os.TempDir(), "gothink.export.*")
-		l          = make([]byte, 4)
+		rows    = atomic.NewUint64(0)
+		barPool = InitBars(bar1, bar2)
+		now     = time.Now()
+		l       = make([]byte, 4)
+		workers = pond.New(runtime.GOMAXPROCS(0), 0)
 	)
-	buff.Grow(31457280)
 	barPool.Start()
 	for _, db := range dbs {
 		bar1.Increment()
@@ -95,66 +101,74 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 		tables := tableMap[db]
 		bar2.SetTotal(len(tables))
 		bar2.Set(0)
-		for _, table := range tables {
-			// Documents
-			var (
-				totalSize      = uint64(0)
-				totalDocuments = uint64(0)
-			)
+		bar2.Prefix("Working...")
+		workerGroup := workers.Group()
+		for _, _table := range tables {
+			table := strings.Clone(_table)
+			println(table)
+			workerGroup.Submit(func() {
+				buff := new(bytes.Buffer)
+				buff.Grow(31457280)
+				// Documents
+				var (
+					totalSize      = uint64(0)
+					totalDocuments = uint64(0)
+				)
 
-			err := os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0700)
-			if err != nil {
-				return err
-			}
-			var tableInfo map[string]interface{}
-			rethinkdb.DB(db).Table(table).Info().ReadOne(&tableInfo, DB)
-			bar2.Prefix(fmt.Sprintf("Table '%v'", table))
-			bar2.Increment()
-			buff.Reset()
-			chunkID := 0
-			err = ForEachTables(DB, db, table, func(data []byte) error {
-				rows++
-				binary.BigEndian.PutUint32(l[0:4], uint32(len(data)))
-				buff.Write(l)
-				buff.Write(data)
-				totalSize += uint64(len(data))
-				totalDocuments++
-				if buff.Len() >= /*5242880*/ 26214400 { // 25MiB
-					if err := writeFile(tempDir, db, table, chunkID, buff); err != nil {
-						return err
-					}
-					chunkID++
-					buff.Reset()
-					return nil
+				_err := os.MkdirAll(filepath.Join(tempDir, fmt.Sprintf("%v/%v", db, table)), 0700)
+				if _err != nil {
+					panic(_err)
 				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			if err := writeFile(tempDir, db, table, chunkID, buff); err != nil {
-				return err
-			}
+				var tableInfo map[string]interface{}
+				rethinkdb.DB(db).Table(table).Info().ReadOne(&tableInfo, DB)
+				bar2.Increment()
+				buff.Reset()
+				chunkID := 0
+				_err = forEachTable(DB, db, table, func(data []byte) error {
+					rows.Add(1)
+					binary.BigEndian.PutUint32(l[0:4], uint32(len(data)))
+					buff.Write(l)
+					buff.Write(data)
+					totalSize += uint64(len(data))
+					totalDocuments++
+					if buff.Len() >= 26214400 { // 25MiB
+						if __err := writeFile(tempDir, db, table, chunkID, buff); err != nil {
+							return __err
+						}
+						chunkID++
+						buff.Reset()
+						return nil
+					}
+					return nil
+				})
+				if _err != nil {
+					panic(_err)
+				}
+				if _err = writeFile(tempDir, db, table, chunkID, buff); _err != nil {
+					panic(_err)
+				}
 
-			// Secondary indexes
-			var (
-				allIndexes []pkg.TableIndex
-				whook      *rethinkdb.WriteHookInfo
-			)
-			rethinkdb.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, DB, rethinkdb.RunOpts{BinaryFormat: "raw"})
-			rethinkdb.DB(db).Table(table).GetWriteHook().ReadOne(&whook, DB)
-			info := pkg.TableInfo{
-				PrimaryKey:     tableInfo["primary_key"].(string),
-				Indexes:        allIndexes,
-				WriteHook:      whook,
-				TotalDocuments: totalDocuments,
-				TotalSize:      totalSize,
-			}
-			err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0600)
-			if err != nil {
-				panic(err)
-			}
+				// Secondary indexes
+				var (
+					allIndexes []pkg.TableIndex
+					whook      *rethinkdb.WriteHookInfo
+				)
+				rethinkdb.DB(db).Table(table).IndexStatus().ReadAll(&allIndexes, DB, rethinkdb.RunOpts{BinaryFormat: "raw"})
+				rethinkdb.DB(db).Table(table).GetWriteHook().ReadOne(&whook, DB)
+				info := pkg.TableInfo{
+					PrimaryKey:     tableInfo["primary_key"].(string),
+					Indexes:        allIndexes,
+					WriteHook:      whook,
+					TotalDocuments: totalDocuments,
+					TotalSize:      totalSize,
+				}
+				_err = os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("%v/%v/.info.json", db, table)), info.ToJSON(), 0600)
+				if _err != nil {
+					panic(_err)
+				}
+			})
 		}
+		workerGroup.Wait()
 	}
 
 	bar1.Prefix("Waiting...")
@@ -200,7 +214,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	barPool.Stop()
 	end := time.Now()
 	println()
-	log.Printf("%v documents exported in %v", rows, end.Sub(now).String())
+	log.Printf("%v documents exported in %v", rows.Load(), end.Sub(now).String())
 	println()
 	return nil
 }
@@ -228,7 +242,7 @@ func writeFile(temp, db, table string, chunk int, buff *bytes.Buffer) error {
 	return err
 }
 
-func ForEachTables(DB *rethinkdb.Session, db, table string, run func(data []byte) error) error {
+func forEachTable(DB *rethinkdb.Session, db, table string, run func(data []byte) error) error {
 	cursor, _ := rethinkdb.DB(db).Table(table, rethinkdb.TableOpts{ReadMode: "outdated"}).Run(DB)
 	for {
 		data, ok := cursor.NextResponse()

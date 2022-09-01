@@ -1,8 +1,8 @@
 package pkg
 
 import (
+	"github.com/VenomPCPL/rethinkdb-go"
 	"github.com/segmentio/encoding/json"
-	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 type ToExport struct {

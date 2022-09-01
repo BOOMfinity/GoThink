@@ -2,6 +2,9 @@ package _import
 
 import (
 	"archive/tar"
+	"github.com/VenomPCPL/rethinkdb-go"
+	"github.com/hashicorp/go-version"
+	"github.com/urfave/cli/v2"
 	"io"
 	"log"
 	"os"
@@ -11,10 +14,7 @@ import (
 	"github.com/BOOMfinity/GoThink"
 	"github.com/BOOMfinity/GoThink/pkg"
 	"github.com/cheggaaa/pb"
-	"github.com/hashicorp/go-version"
 	"github.com/klauspost/compress/gzip"
-	"github.com/urfave/cli/v2"
-	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (

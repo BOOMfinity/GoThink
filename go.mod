@@ -1,15 +1,17 @@
 module github.com/BOOMfinity/GoThink
 
-go 1.18
+go 1.19
 
 require (
+	github.com/VenomPCPL/rethinkdb-go v0.0.0-20220901163744-efef322a985e
+	github.com/alitto/pond v1.8.1
 	github.com/cheggaaa/pb v1.0.29
 	github.com/hashicorp/go-version v1.6.0
-	github.com/klauspost/compress v1.15.7
+	github.com/klauspost/compress v1.15.9
 	github.com/klauspost/pgzip v1.2.5
 	github.com/segmentio/encoding v0.3.5
-	github.com/urfave/cli/v2 v2.10.3
-	gopkg.in/rethinkdb/rethinkdb-go.v6 v6.2.2
+	github.com/urfave/cli/v2 v2.11.2
+	go.uber.org/atomic v1.10.0
 )
 
 require (
@@ -26,4 +28,5 @@ require (
 	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	gopkg.in/cenkalti/backoff.v2 v2.2.1 // indirect
+	gopkg.in/rethinkdb/rethinkdb-go.v6 v6.2.2 // indirect
 )

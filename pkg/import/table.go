@@ -13,7 +13,7 @@ import (
 	"github.com/segmentio/encoding/json"
 
 	"github.com/BOOMfinity/GoThink/pkg"
-	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
+	r "github.com/VenomPCPL/rethinkdb-go"
 )
 
 type databaseImport struct {
