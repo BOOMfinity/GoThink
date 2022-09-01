@@ -16,7 +16,7 @@ import (
 	"github.com/BOOMfinity/GoThink"
 	"github.com/BOOMfinity/GoThink/pkg"
 	"github.com/cheggaaa/pb"
-	"github.com/klauspost/pgzip"
+	"github.com/klauspost/compress/zstd"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
@@ -171,7 +171,7 @@ func Run(DB *rethinkdb.Session, exportPath, outputPath string) error {
 	if err != nil {
 		panic(err)
 	}
-	zWriter, _ := pgzip.NewWriterLevel(file, pgzip.BestCompression)
+	zWriter, _ := zstd.NewWriter(file, zstd.WithEncoderLevel(zstd.SpeedFastest))
 	tWriter := tar.NewWriter(zWriter)
 
 	dirs, err := os.ReadDir(tempDir)

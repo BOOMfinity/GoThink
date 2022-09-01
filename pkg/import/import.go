@@ -12,7 +12,7 @@ import (
 	"github.com/BOOMfinity/GoThink/pkg"
 	"github.com/cheggaaa/pb"
 	"github.com/hashicorp/go-version"
-	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
@@ -55,7 +55,7 @@ func ImportFile(filePath string, conn *rethinkdb.Session, workers *workerPool, t
 		return err
 	}
 	defer file.Close()
-	decoder, _ := gzip.NewReader(file)
+	decoder, _ := zstd.NewReader(file)
 	reader := tar.NewReader(decoder)
 	var ver *version.Version
 	var currentImport *databaseImport
