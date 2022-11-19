@@ -42,3 +42,9 @@ Just create the issue and describe your request. We will look at it.
 ### Can I create a PR?
 
 Of course, you can. We will check it and decide what to do. However, if you're going to do something big, create an issue first to make sure no one else is already working on the same thing.
+
+### Do you have Discord server?
+
+Yes, we have! Enjoy!
+
+[![Discord Widget](https://discordapp.com/api/guilds/1036320104486547466/widget.png?style=banner4)](https://labs.boomfinity.xyz)
